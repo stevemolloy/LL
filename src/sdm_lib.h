@@ -139,6 +139,7 @@ sdm_string_view sdm_sv_pop_by_whitespace(sdm_string_view *SV);
 int sdm_sv_pop_integer(sdm_string_view *SV);
 char sdm_sv_pop_one_char(sdm_string_view *SV);
 void sdm_sv_trim(sdm_string_view *SV);
+int sdm_svncmp(sdm_string_view SV, const char *cmp);
 
 typedef struct {
   char key[32];
@@ -361,6 +362,11 @@ void sdm_sv_trim(sdm_string_view *SV) {
     SV->data++;
     SV->length--;
   }
+}
+
+int sdm_svncmp(sdm_string_view SV, const char *cmp) {
+  size_t n = strlen(cmp) < SV.length ? strlen(cmp) : SV.length;
+  return strncmp(SV.data, cmp, n);
 }
 
 char *sdm_shift_args(int *argc, char ***argv) {
