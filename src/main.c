@@ -1,8 +1,33 @@
+#include <assert.h>
 #include <stdio.h>
 #include <strings.h>
 
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+
 #define SDM_LIB_IMPLEMENTATION
 #include "sdm_lib.h"
+
+typedef enum {
+  VARI_TYPE_INT,
+  VARI_TYPE_FLOAT,
+} VariableType;
+
+typedef struct {
+  VariableType type;
+  void *data;
+} Variable;
+
+typedef struct {
+  size_t capacity;
+  size_t length;
+  Variable *data;
+} VariableArray;
+
+typedef struct {
+  char *key;
+  Variable value;
+} NamedVariable;
 
 typedef enum {
   TOKEN_TYPE_SYMBOL,
@@ -56,7 +81,27 @@ typedef struct {
   Token *data;
 } TokenArray;
 
+typedef struct {
+  char *key;
+  double value;
+} ParsingVar;
+
+typedef struct {
+  size_t capacity;
+  size_t length;
+  double *data;
+} DoubleArray;
+
 bool tokenise_input_file(sdm_string_view *file_contents, TokenArray *token_array);
+double evaluate_token_string(TokenArray *token_array, size_t *index, NamedVariable *variables);
+
+static sdm_arena_t main_arena = {0};
+static sdm_arena_t *active_arena = &main_arena;
+
+void *active_alloc(size_t size) {
+  return sdm_arena_alloc(active_arena, size);
+}
+#define ALLOC active_alloc
 
 int main(void) {
   const char *input_filename = "small_example.ll";
@@ -64,18 +109,87 @@ int main(void) {
 
   sdm_string_view source = sdm_cstr_as_sv(buffer);
 
-  printf(SDM_SV_F"\n", SDM_SV_Vals(source));
-
   TokenArray token_array = {0};
   SDM_ENSURE_ARRAY_MIN_CAP(token_array, 1024);
   if (!tokenise_input_file(&source, &token_array)) return 1;
 
-  for (size_t i=0; i<token_array.length; i++) {
-    Token token = token_array.data[i];
+  NamedVariable *variable_library = NULL;
+  sdm_arena_init(&main_arena, 16*1024*1024);
+
+  size_t i = 0;
+  while (i < token_array.length) {
+    Token token = token_array.data[i++];
+
+    if (token.type == TOKEN_TYPE_COMMENT) continue;
+
+    if (token.type == TOKEN_TYPE_SYMBOL) {
+      if (strncmp(token.content.data, "let", 3) == 0) {
+        // We're defining a new variable
+        Variable new_var = {0};
+
+        token = token_array.data[i++];
+        if (token.type != TOKEN_TYPE_SYMBOL) {
+          fprintf(stderr, "%s:%zu:%zu: Variable name is of incorrect form.\n",
+                  input_filename, token.loc.line+1, token.loc.col+1);
+          return 1;
+        }
+        char *name = sdm_sv_to_cstr(token.content);
+        fprintf(stderr, "Creating a variable with name = '%s'\n", name);
+        token = token_array.data[i++];
+        if (token.type != TOKEN_TYPE_COLON) {
+          fprintf(stderr, "%s:%zu:%zu: Variable name in 'let' expression should be followed by a ':' and then a type\n",
+                  input_filename, token.loc.line+1, token.loc.col+1);
+          return 1;
+        }
+        token = token_array.data[i++];
+        if (sdm_svncmp(token.content, "int") == 0) {
+          printf("Found a variable of type 'int'\n");
+          new_var.type = VARI_TYPE_INT;
+        } else if (sdm_svncmp(token.content, "float") == 0) {
+          new_var.type = VARI_TYPE_FLOAT;
+          printf("Found a variable of type 'float'\n");
+        } else {
+          fprintf(stderr, "%s:%zu:%zu: Type '"SDM_SV_F"' is not a recognised type\n",
+                  input_filename, token.loc.line+1, token.loc.col+1, SDM_SV_Vals(token.content));
+          return 1;
+        }
+        token = token_array.data[i++];
+        if (token.type != TOKEN_TYPE_ASSIGNMENT) {
+          fprintf(stderr, "%s:%zu:%zu: Expected '=' but got '"SDM_SV_F"'\n",
+                  input_filename, token.loc.line+1, token.loc.col+1, SDM_SV_Vals(token.content));
+          return 1;
+        }
+        token = token_array.data[i++];
+        switch (new_var.type) {
+          case VARI_TYPE_INT: {
+            int *new_int = ALLOC(sizeof(int));
+            // *new_int = evaluate_token_string(&token_array, &i, variable_library);
+            new_var.data = (void*)new_int;
+          } break;
+          case VARI_TYPE_FLOAT: {
+          } break;
+        }
+        shput(variable_library, name, new_var);
+      }
+    } else {
+      fprintf(stderr, "%s:%zu:%zu: Expected a symbol but got '"SDM_SV_F"'\n",
+              input_filename, token.loc.line+1, token.loc.col+1, SDM_SV_Vals(token.content));
+      return 1;
+    }
+
     printf("(%s)  ==>  "SDM_SV_F" (line %zu, column %zu)\n", token_strings[token.type], SDM_SV_Vals(token.content), token.loc.line+1, token.loc.col+1);
   }
 
   return 0;
+}
+
+int prec(Token tok) {
+  if (tok.type == TOKEN_TYPE_SUB) return 50;
+  if (tok.type == TOKEN_TYPE_ADD) return 50;
+  if (tok.type == TOKEN_TYPE_DIV) return 100;
+  if (tok.type == TOKEN_TYPE_MULT) return 100;
+  fprintf(stderr, "'prec' called with inappropriate token");
+  exit(1);
 }
 
 size_t starts_with_float(const char *input) {
