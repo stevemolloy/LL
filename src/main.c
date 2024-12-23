@@ -93,7 +93,7 @@ Token *get_current_token(TokenArray *token_array) {
 
 void print_ast(ASTNode *ast, size_t level) {
   if (ast->type == NODE_TYPE_BINOP) {
-    for (size_t i=0; i<level; i++) printf("\t");
+    for (size_t i=0; i<level; i++) printf("  ");
     char *op_str = "";
     if (ast->as.binop.type == BINOP_DIV) op_str = "/";
     else if (ast->as.binop.type == BINOP_MUL) op_str = "*";
@@ -104,7 +104,7 @@ void print_ast(ASTNode *ast, size_t level) {
     print_ast(ast->as.binop.lhs, level+1);
     print_ast(ast->as.binop.rhs, level+1);
   } else if (ast->type == NODE_TYPE_LITERAL) {
-    for (size_t i=0; i<level; i++) printf("\t");
+    for (size_t i=0; i<level; i++) printf("  ");
     printf("LITERAL "SDM_SV_F"\n", SDM_SV_Vals(ast->as.literal.value));
   }
 }
