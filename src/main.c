@@ -180,6 +180,7 @@ ASTNode *parse_expression(TokenArray *token_array) {
             SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
     exit(1);
   }
+  token_array->index++;
 
   return expr_node;
 }
@@ -196,13 +197,15 @@ int main(void) {
   TokenArray token_array = {0};
   if (!tokenise_input_file(&src_file, &token_array)) return 1;
 
-  ASTNode *ast = parse_expression(&token_array);
+  while (token_array.index < token_array.length) {
+    ASTNode *ast = parse_expression(&token_array);
+    print_ast(ast, 0);
+  }
 
-  print_ast(ast, 0);
-  printf("Remaining:\n");
+  printf("Remaining tokens:\n");
   while (token_array.index < token_array.length) {
     Token token = token_array.data[token_array.index];
-    printf(SDM_SV_F"\n", SDM_SV_Vals(token.content));
+    printf("%zu: "SDM_SV_F"\n", token_array.index, SDM_SV_Vals(token.content));
     token_array.index += 1;
   }
 
