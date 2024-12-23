@@ -118,8 +118,12 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     num->as.literal.type = VAR_TYPE_INT;
     num->as.literal.value = next->content;
     return num;
+  } else if (next->type == TOKEN_TYPE_SEMICOLON) {
+    return NULL;
   }
-  return NULL;
+  fprintf(stderr, SDM_SV_F":%zu:%zu: Expected a number or a semicolon but received "SDM_SV_F"\n", 
+          SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
+  exit(1);
 }
 
 ASTNode *parse_expression_multdiv(TokenArray *token_array) {
@@ -170,6 +174,13 @@ ASTNode *parse_expression(TokenArray *token_array) {
   }
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
+  Token *next = get_current_token(token_array);
+  if (next->type != TOKEN_TYPE_SEMICOLON) {
+    fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon on or before this line?\n", 
+            SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
+    exit(1);
+  }
+
   return expr_node;
 }
 
@@ -186,7 +197,14 @@ int main(void) {
   if (!tokenise_input_file(&src_file, &token_array)) return 1;
 
   ASTNode *ast = parse_expression(&token_array);
+
   print_ast(ast, 0);
+  printf("Remaining:\n");
+  while (token_array.index < token_array.length) {
+    Token token = token_array.data[token_array.index];
+    printf(SDM_SV_F"\n", SDM_SV_Vals(token.content));
+    token_array.index += 1;
+  }
 
   sdm_arena_free(&main_arena);
 
