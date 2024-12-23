@@ -4,6 +4,7 @@
 #include <strings.h>
 
 #include "ll_lib.h"
+#include "sdm_lib.h"
 
 size_t starts_with_float(const char *input) {
   char *endptr;
@@ -27,7 +28,7 @@ void sv_trim_follow(sdm_string_view *SV, Loc *loc) {
   while (SV->length > 0 && isspace(SV->data[0])) {
     if (SV->data[0] == '\n') {
       loc->line++;
-      loc->col = 0;
+      loc->col = 1;
     } else {
       loc->col++;
     }
@@ -54,8 +55,10 @@ sdm_string_view sv_chop_follow(sdm_string_view *SV, size_t len, Loc *loc) {
   return retval;
 }
 
-bool tokenise_input_file(sdm_string_view *file_contents, TokenArray *token_array) {
-  Loc loc = {0};
+bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
+  Loc loc = {.line = 1};
+  loc.filename = file_data->filename;
+  sdm_string_view *file_contents = &file_data->contents;
   sv_trim_follow(file_contents, &loc);
 
   while (file_contents->length > 0) {
@@ -64,7 +67,10 @@ bool tokenise_input_file(sdm_string_view *file_contents, TokenArray *token_array
 
     size_t len = starts_with_float(file_contents->data);
     size_t jump_len = 1;
-    if (isalpha(file_contents->data[0])) {
+    if (isalpha(file_contents->data[0]) && sdm_svncmp(*file_contents, "let")) {
+      token.type = TOKEN_TYPE_VARINIT;
+      jump_len = 3;
+    } else if (isalpha(file_contents->data[0])) {
       token.type = TOKEN_TYPE_SYMBOL;
       jump_len = 0;
       while (isvalididchar(file_contents->data[jump_len])) jump_len++;
@@ -85,6 +91,8 @@ bool tokenise_input_file(sdm_string_view *file_contents, TokenArray *token_array
     else if (file_contents->data[0] == ':') token.type = TOKEN_TYPE_COLON;
     else if (file_contents->data[0] == ',') token.type = TOKEN_TYPE_COMMA;
     else if (file_contents->data[0] == '*') token.type = TOKEN_TYPE_MULT;
+    else if (file_contents->data[0] == '/') token.type = TOKEN_TYPE_DIV;
+    else if (file_contents->data[0] == '+') token.type = TOKEN_TYPE_ADD;
     else if (file_contents->data[0] == '-') token.type = TOKEN_TYPE_SUB;
     else if (file_contents->data[0] == '(') token.type = TOKEN_TYPE_OPAREN;
     else if (file_contents->data[0] == ')') token.type = TOKEN_TYPE_CPAREN;

@@ -7,6 +7,7 @@
 
 typedef enum {
   TOKEN_TYPE_SYMBOL,
+  TOKEN_TYPE_VARINIT,
   TOKEN_TYPE_NUMBER,
   TOKEN_TYPE_ASSIGNMENT,
   TOKEN_TYPE_ADD,
@@ -24,6 +25,7 @@ typedef enum {
 } TokenType;
 
 typedef struct {
+  sdm_string_view filename;
   size_t line;
   size_t col;
 } Loc;
@@ -38,15 +40,20 @@ typedef struct {
   size_t capacity;
   size_t length;
   Token *data;
+  size_t index;
 } TokenArray;
 
-bool tokenise_input_file(sdm_string_view *file_contents, TokenArray *token_array);
+typedef struct {
+  sdm_string_view filename;
+  sdm_string_view contents;
+} FileData;
+
+bool tokenise_input_file(FileData *file_data, TokenArray *token_array);
 size_t starts_with_float(const char *input);
 bool isvalididchar(char c);
 bool string_starts_with(const char *input, const char *needle);
 void sv_trim_follow(sdm_string_view *SV, Loc *loc);
 sdm_string_view sv_chop_follow(sdm_string_view *SV, size_t len, Loc *loc);
-bool tokenise_input_file(sdm_string_view *file_contents, TokenArray *token_array);
 
 #endif //_LL_LIB_H
 
