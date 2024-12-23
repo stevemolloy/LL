@@ -67,7 +67,7 @@ bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
 
     size_t len = starts_with_float(file_contents->data);
     size_t jump_len = 1;
-    if (isalpha(file_contents->data[0]) && sdm_svncmp(*file_contents, "let")) {
+    if (isalpha(file_contents->data[0]) && sdm_svncmp(*file_contents, "let") == 0) {
       token.type = TOKEN_TYPE_VARINIT;
       jump_len = 3;
     } else if (isalpha(file_contents->data[0])) {
