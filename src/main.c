@@ -91,7 +91,8 @@ Token *get_current_token(TokenArray *token_array) {
   return &token_array->data[token_array->index];
 }
 
-void print_ast(ASTNode *ast, size_t level) {
+#define print_ast(ARGS) print_ast_((ARGS), 0)
+void print_ast_(ASTNode *ast, size_t level) {
   if (ast->type == NODE_TYPE_BINOP) {
     for (size_t i=0; i<level; i++) printf("  ");
     char *op_str = "";
@@ -101,8 +102,8 @@ void print_ast(ASTNode *ast, size_t level) {
     else if (ast->as.binop.type == BINOP_ADD) op_str = "+";
     else exit(1);
     printf("BINOP %s\n", op_str);
-    print_ast(ast->as.binop.lhs, level+1);
-    print_ast(ast->as.binop.rhs, level+1);
+    print_ast_(ast->as.binop.lhs, level+1);
+    print_ast_(ast->as.binop.rhs, level+1);
   } else if (ast->type == NODE_TYPE_LITERAL) {
     for (size_t i=0; i<level; i++) printf("  ");
     printf("LITERAL "SDM_SV_F"\n", SDM_SV_Vals(ast->as.literal.value));
@@ -210,7 +211,7 @@ int main(void) {
 
   printf("%s\n", buffer);
   for (size_t i=0; i<program.length; i++) {
-    print_ast(&program.data[i], 0);
+    print_ast(&program.data[i]);
   }
 
   sdm_arena_free(&main_arena);
