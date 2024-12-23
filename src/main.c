@@ -125,8 +125,9 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
 ASTNode *parse_expression_multdiv(TokenArray *token_array) {
   ASTNode *lhs = parse_expression_primary(token_array);
   if (!lhs) return NULL;
+
   Token *next = get_current_token(token_array);
-  if ((next != NULL) && ((next->type == TOKEN_TYPE_MULT) || (next->type == TOKEN_TYPE_DIV))) {
+  while ((next != NULL) && ((next->type == TOKEN_TYPE_MULT) || (next->type == TOKEN_TYPE_DIV))) {
     token_array->index++;
     ASTNode *rhs = parse_expression_primary(token_array);
     ASTNode *mult = SDM_MALLOC(sizeof(ASTNode));
@@ -136,7 +137,8 @@ ASTNode *parse_expression_multdiv(TokenArray *token_array) {
       .as.binop.lhs = lhs,
       .as.binop.rhs = rhs,
     };
-    return mult;
+    lhs = mult;
+    next = get_current_token(token_array);
   }
   return lhs;
 }
@@ -145,7 +147,7 @@ ASTNode *parse_expression_plus_minus(TokenArray *token_array) {
   ASTNode *lhs = parse_expression_multdiv(token_array);
   if (!lhs) return NULL;
   Token *next = get_current_token(token_array);
-  if ((next != NULL) && ((next->type == TOKEN_TYPE_ADD) || (next->type == TOKEN_TYPE_SUB))) {
+  while ((next != NULL) && ((next->type == TOKEN_TYPE_ADD) || (next->type == TOKEN_TYPE_SUB))) {
     token_array->index++;
     ASTNode *rhs = parse_expression_multdiv(token_array);
     if (!rhs) return NULL;
@@ -156,7 +158,8 @@ ASTNode *parse_expression_plus_minus(TokenArray *token_array) {
       .as.binop.lhs = lhs,
       .as.binop.rhs = rhs,
     };
-    return plus;
+    lhs = plus;
+    next = get_current_token(token_array);
   }
   return lhs;
 }
@@ -165,15 +168,9 @@ ASTNode *parse_expression(TokenArray *token_array) {
   while (get_current_token(token_array)->type == TOKEN_TYPE_COMMENT) {
     token_array->index++;
   }
-  ASTNode *lhs = parse_expression_plus_minus(token_array);
-  Token *next = get_current_token(token_array);
-  if (next->type == TOKEN_TYPE_SEMICOLON) {
-    return lhs;
-  } else {
-    print_ast(lhs, 0);
-    fprintf(stderr, "Not done yet!\n");
-    exit(1);
-  }
+  ASTNode *expr_node = parse_expression_plus_minus(token_array);
+
+  return expr_node;
 }
 
 int main(void) {
