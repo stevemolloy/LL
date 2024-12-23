@@ -169,12 +169,15 @@ ASTNode *parse_expression_plus_minus(TokenArray *token_array) {
 }
 
 ASTNode *parse_expression(TokenArray *token_array) {
-  while (get_current_token(token_array)->type == TOKEN_TYPE_COMMENT) {
+  Token *next = get_current_token(token_array);
+  while ((next != NULL) && (next->type == TOKEN_TYPE_COMMENT)) {
     token_array->index++;
+    next = get_current_token(token_array);
   }
+  if (next == NULL) return NULL;
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
-  Token *next = get_current_token(token_array);
+  next = get_current_token(token_array);
   if (next->type != TOKEN_TYPE_SEMICOLON) {
     fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon on or before this line?\n", 
             SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
@@ -197,16 +200,17 @@ int main(void) {
   TokenArray token_array = {0};
   if (!tokenise_input_file(&src_file, &token_array)) return 1;
 
+  ASTNodeArray program = {0};
+  SDM_ENSURE_ARRAY_MIN_CAP(program, 1024);
   while (token_array.index < token_array.length) {
     ASTNode *ast = parse_expression(&token_array);
-    print_ast(ast, 0);
+    if (ast == NULL) break;
+    SDM_ARRAY_PUSH(program, *ast);
   }
 
-  printf("Remaining tokens:\n");
-  while (token_array.index < token_array.length) {
-    Token token = token_array.data[token_array.index];
-    printf("%zu: "SDM_SV_F"\n", token_array.index, SDM_SV_Vals(token.content));
-    token_array.index += 1;
+  printf("%s\n", buffer);
+  for (size_t i=0; i<program.length; i++) {
+    print_ast(&program.data[i], 0);
   }
 
   sdm_arena_free(&main_arena);
