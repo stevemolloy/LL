@@ -5,6 +5,10 @@
 
 #include "sdm_lib.h"
 
+#ifndef EXTERN
+#define EXTERN extern
+#endif
+
 typedef enum {
   TOKEN_TYPE_SYMBOL,
   TOKEN_TYPE_VARINIT,
@@ -48,12 +52,80 @@ typedef struct {
   sdm_string_view contents;
 } FileData;
 
+typedef struct ASTNode ASTNode;
+
+typedef enum {
+  NODE_TYPE_BINOP,
+  NODE_TYPE_LITERAL,
+  NODE_TYPE_VARINIT,
+  NODE_TYPE_COUNT,
+} ASTNodeType;
+
+typedef enum {
+  VAR_TYPE_INT,
+  VAR_TYPE_FLOAT,
+} VarType;
+
+typedef enum {
+  BINOP_ADD,
+  BINOP_SUB,
+  BINOP_MUL,
+  BINOP_DIV,
+} BinOpType;
+
+typedef struct {
+  BinOpType type;
+  ASTNode *lhs;
+  ASTNode *rhs;
+} BinOp;
+
+typedef struct {
+  VarType type;
+  sdm_string_view value;
+} Literal;
+
+typedef struct {
+  sdm_string_view name;
+  VarType init_type;
+  ASTNode *init_value;
+} VariableInit;
+
+struct ASTNode {
+  ASTNodeType type;
+  union {
+    BinOp binop;
+    Literal literal;
+    VariableInit var_init;
+  } as;
+};
+
+typedef struct {
+  size_t capacity;
+  size_t length;
+  struct ASTNode *data;
+} ASTNodeArray;
+
+typedef struct {
+  char *key;
+  ASTNode *value;
+} VariableDefn;
+
+EXTERN VariableDefn *variable_lib;
+
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array);
 size_t starts_with_float(const char *input);
 bool isvalididchar(char c);
 bool string_starts_with(const char *input, const char *needle);
 void sv_trim_follow(sdm_string_view *SV, Loc *loc);
 sdm_string_view sv_chop_follow(sdm_string_view *SV, size_t len, Loc *loc);
+
+Token *get_current_token(TokenArray *token_array);
+#define print_ast(ARGS) print_ast_((ARGS), 0)
+void print_ast_(ASTNode *ast, size_t level);
+ASTNode *parse_expression_primary(TokenArray *token_array);
+ASTNode *parse_expression_multdiv(TokenArray *token_array);
+ASTNode *parse_expression_plus_minus(TokenArray *token_array);
+ASTNode *parse_expression(TokenArray *token_array);
 
 #endif //_LL_LIB_H
 
