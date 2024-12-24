@@ -2,6 +2,7 @@
 #define _LL_LIB_H
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "sdm_lib.h"
 
@@ -134,6 +135,8 @@ ASTNode *parse_expression_primary(TokenArray *token_array);
 ASTNode *parse_expression_multdiv(TokenArray *token_array);
 ASTNode *parse_expression_plus_minus(TokenArray *token_array);
 ASTNode *parse_expression(TokenArray *token_array);
+
+void write_astnode_toC(FILE *sink, ASTNode *ast);
 
 #endif //_LL_LIB_H
 

@@ -348,3 +348,50 @@ ASTNode *parse_expression(TokenArray *token_array) {
   return expr_node;
 }
 
+void write_astnode_toC(FILE *sink, ASTNode *ast) {
+  char *vartype_as_C[VAR_TYPE_COUNT] = {
+    [VAR_TYPE_INT] = "int",
+    [VAR_TYPE_FLOAT] = "double",
+  };
+
+  char *binop_as_C[BINOP_COUNT] = {
+    [BINOP_ADD] = "+",
+    [BINOP_SUB] = "-",
+    [BINOP_MUL] = "*",
+    [BINOP_DIV] = "/",
+  };
+
+  switch (ast->type) {
+    case NODE_TYPE_VARINIT: {
+      VariableInit var_init = ast->as.var_init;
+      fprintf(sink, "%s ", vartype_as_C[var_init.init_type]);
+      fprintf(sink, SDM_SV_F, SDM_SV_Vals(var_init.name));
+      if (var_init.init_value != NULL) {
+        fprintf(sink, " = ");
+        write_astnode_toC(sink, var_init.init_value);
+      }
+      fprintf(sink, ";\n");
+    } break;
+    case NODE_TYPE_VARIABLE: {
+      Variable variable = ast->as.variable;
+      fprintf(sink, SDM_SV_F, SDM_SV_Vals(variable.name));
+    } break;
+    case NODE_TYPE_BINOP: {
+      BinOp binop = ast->as.binop;
+      fprintf(sink, "( ");
+      write_astnode_toC(sink, binop.lhs);
+      fprintf(sink, " %s ", binop_as_C[binop.type]);
+      write_astnode_toC(sink, binop.rhs);
+      fprintf(sink, " )");
+    } break;
+    case NODE_TYPE_LITERAL: {
+      Literal literal = ast->as.literal;
+      fprintf(sink, SDM_SV_F, SDM_SV_Vals(literal.value));
+    } break;
+    case NODE_TYPE_COUNT: {
+      fprintf(stderr, "Unreachable. This is a bug in the C transpiler.\n");
+      exit(1);
+    }
+  }
+}
+
