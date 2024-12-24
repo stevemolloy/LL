@@ -194,8 +194,15 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     token_array->index++;
     ASTNode *num = SDM_MALLOC(sizeof(ASTNode));
     num->type = NODE_TYPE_LITERAL;
-    num->as.literal.type = VAR_TYPE_INT;
     num->as.literal.value = next->content;
+    char *start_ptr = next->content.data;
+    char *endptr = start_ptr;
+    strtol(start_ptr, &endptr, 10);
+    if ((endptr - start_ptr) == (long)next->content.length) {
+      num->as.literal.type = VAR_TYPE_INT;
+    } else {
+      num->as.literal.type = VAR_TYPE_FLOAT;
+    }
     return num;
   } else if (next->type == TOKEN_TYPE_SYMBOL) {
     // Might be a variable or a function call
