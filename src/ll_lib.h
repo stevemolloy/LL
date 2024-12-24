@@ -60,6 +60,7 @@ typedef enum {
   NODE_TYPE_LITERAL,
   NODE_TYPE_VARINIT,
   NODE_TYPE_VARIABLE,
+  NODE_TYPE_FUNCALL,
   NODE_TYPE_COUNT,
 } ASTNodeType;
 
@@ -98,6 +99,12 @@ typedef struct {
   sdm_string_view name;
 } Variable;
 
+typedef struct ASTNodeArray ASTNodeArray;
+typedef struct {
+  sdm_string_view name;
+  ASTNodeArray *args;
+} FunCall;
+
 struct ASTNode {
   ASTNodeType type;
   union {
@@ -105,14 +112,15 @@ struct ASTNode {
     Literal literal;
     VariableInit var_init;
     Variable variable;
+    FunCall funcall;
   } as;
 };
 
-typedef struct {
+struct ASTNodeArray {
   size_t capacity;
   size_t length;
   struct ASTNode *data;
-} ASTNodeArray;
+};
 
 typedef struct {
   char *key;

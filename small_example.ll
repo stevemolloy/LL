@@ -3,5 +3,8 @@ let C: float     = 528.0/periods;
 let y: int;
 let x: int = 1 + 2 * 3 - 4;
 
+println(periods);
+println(C);
+println(x);
 // println("C is equal to {C}");
 

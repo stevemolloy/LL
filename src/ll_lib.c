@@ -58,28 +58,29 @@ sdm_string_view sv_chop_follow(sdm_string_view *SV, size_t len, Loc *loc) {
 }
 
 char *token_strings[TOKEN_TYPE_COUNT] = {
-  [TOKEN_TYPE_SYMBOL] =     "TOKEN_TYPE_SYMBOL",
+  [TOKEN_TYPE_SYMBOL]     = "TOKEN_TYPE_SYMBOL",
   [TOKEN_TYPE_VARINIT]    = "TOKEN_TYPE_VARINIT",
-  [TOKEN_TYPE_NUMBER] =     "TOKEN_TYPE_NUMBER",
+  [TOKEN_TYPE_NUMBER]     = "TOKEN_TYPE_NUMBER",
   [TOKEN_TYPE_ASSIGNMENT] = "TOKEN_TYPE_ASSIGNMENT",
-  [TOKEN_TYPE_ADD] =        "TOKEN_TYPE_ADD",
-  [TOKEN_TYPE_MULT] =       "TOKEN_TYPE_MULT",
-  [TOKEN_TYPE_SUB] =        "TOKEN_TYPE_SUB",
-  [TOKEN_TYPE_DIV] =        "TOKEN_TYPE_DIV",
-  [TOKEN_TYPE_OPAREN] =     "TOKEN_TYPE_OPAREN",
-  [TOKEN_TYPE_CPAREN] =     "TOKEN_TYPE_CPAREN",
-  [TOKEN_TYPE_SEMICOLON] =  "TOKEN_TYPE_SEMICOLON",
-  [TOKEN_TYPE_COLON] =      "TOKEN_TYPE_COLON",
-  [TOKEN_TYPE_COMMA] =      "TOKEN_TYPE_COMMA",
-  [TOKEN_TYPE_COMMENT] =    "TOKEN_TYPE_COMMENT",
-  [TOKEN_TYPE_STRING] =     "TOKEN_TYPE_STRING",
+  [TOKEN_TYPE_ADD]        = "TOKEN_TYPE_ADD",
+  [TOKEN_TYPE_MULT]       = "TOKEN_TYPE_MULT",
+  [TOKEN_TYPE_SUB]        = "TOKEN_TYPE_SUB",
+  [TOKEN_TYPE_DIV]        = "TOKEN_TYPE_DIV",
+  [TOKEN_TYPE_OPAREN]     = "TOKEN_TYPE_OPAREN",
+  [TOKEN_TYPE_CPAREN]     = "TOKEN_TYPE_CPAREN",
+  [TOKEN_TYPE_SEMICOLON]  = "TOKEN_TYPE_SEMICOLON",
+  [TOKEN_TYPE_COLON]      = "TOKEN_TYPE_COLON",
+  [TOKEN_TYPE_COMMA]      = "TOKEN_TYPE_COMMA",
+  [TOKEN_TYPE_COMMENT]    = "TOKEN_TYPE_COMMENT",
+  [TOKEN_TYPE_STRING]     = "TOKEN_TYPE_STRING",
 };
 
 char *astnode_type_strings[NODE_TYPE_COUNT] = {
-  [NODE_TYPE_BINOP]   = "NODE_TYPE_BINOP",
-  [NODE_TYPE_LITERAL] = "NODE_TYPE_LITERAL",
+  [NODE_TYPE_BINOP]    = "NODE_TYPE_BINOP",
+  [NODE_TYPE_LITERAL]  = "NODE_TYPE_LITERAL",
   [NODE_TYPE_VARIABLE] = "NODE_TYPE_VARIABLE",
-  [NODE_TYPE_VARINIT] = "NODE_TYPE_VARINIT",
+  [NODE_TYPE_VARINIT]  = "NODE_TYPE_VARINIT",
+  [NODE_TYPE_FUNCALL]  = "NODE_TYPE_FUNCALL",
 };
 
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
@@ -171,6 +172,12 @@ void print_ast_(ASTNode *ast, size_t level) {
   } else if (ast->type == NODE_TYPE_VARIABLE) {
     for (size_t i=0; i<level; i++) printf("  ");
     printf(SDM_SV_F"\n", SDM_SV_Vals(ast->as.variable.name));
+  } else if (ast->type == NODE_TYPE_FUNCALL) {
+    for (size_t i=0; i<level; i++) printf("  ");
+    printf("CALL "SDM_SV_F"\n", SDM_SV_Vals(ast->as.funcall.name));
+    for (size_t i=0; i<ast->as.funcall.args->length; i++) {
+      print_ast_(&ast->as.funcall.args->data[i], level+1);
+    }
   } else {
     printf("No printing method defined for this node type: %s\n", astnode_type_strings[ast->type]);
   }
@@ -186,17 +193,30 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     num->as.literal.value = next->content;
     return num;
   } else if (next->type == TOKEN_TYPE_SYMBOL) {
+    // Might be a variable or a function call
+    sdm_string_view name = next->content;
     token_array->index++;
-    int i = shgeti(variable_lib, sdm_sv_to_cstr(next->content));
-    if (i < 0) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: Undefined variable '"SDM_SV_F"'\n", 
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
-      exit(1);
+    if ((token_array->index < (token_array->length)) && (get_current_token(token_array)->type == TOKEN_TYPE_OPAREN)) {
+      // This is a function call
+      token_array->index++;
+      ASTNode *funcall = SDM_MALLOC(sizeof(ASTNode));
+      funcall->type = NODE_TYPE_FUNCALL;
+      funcall->as.funcall.name  = name;
+      funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
+      SDM_ARRAY_PUSH(*funcall->as.funcall.args, *parse_expression(token_array));
+      return funcall;
+    } else {
+      int i = shgeti(variable_lib, sdm_sv_to_cstr(name));
+      if (i < 0) {
+        fprintf(stderr, SDM_SV_F":%zu:%zu: Undefined variable '"SDM_SV_F"'\n", 
+                SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
+        exit(1);
+      }
+      ASTNode *variable = SDM_MALLOC(sizeof(ASTNode));
+      variable->type = NODE_TYPE_VARIABLE;
+      variable->as.variable = (Variable){.name = next->content};
+      return variable;
     }
-    ASTNode *variable = SDM_MALLOC(sizeof(ASTNode));
-    variable->type = NODE_TYPE_VARIABLE;
-    variable->as.variable = (Variable){.name = next->content};
-    return variable;
   } else if (next->type == TOKEN_TYPE_SEMICOLON) {
     return NULL;
   }
@@ -325,8 +345,8 @@ ASTNode *parse_expression(TokenArray *token_array) {
     shputs(variable_lib, new_var);
 
     next = get_current_token(token_array);
-    if (next->type != TOKEN_TYPE_SEMICOLON) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon on or before this line?\n", 
+    if ((next->type != TOKEN_TYPE_SEMICOLON) && (next->type != TOKEN_TYPE_CPAREN)) {
+      fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
               SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
       exit(1);
     }
@@ -338,8 +358,8 @@ ASTNode *parse_expression(TokenArray *token_array) {
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
   next = get_current_token(token_array);
-  if (next->type != TOKEN_TYPE_SEMICOLON) {
-    fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon on or before this line?\n", 
+  if ((next->type != TOKEN_TYPE_SEMICOLON) && (next->type != TOKEN_TYPE_CPAREN)) {
+    fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
             SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
     exit(1);
   }
@@ -387,6 +407,15 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
     case NODE_TYPE_LITERAL: {
       Literal literal = ast->as.literal;
       fprintf(sink, SDM_SV_F, SDM_SV_Vals(literal.value));
+    } break;
+    case NODE_TYPE_FUNCALL: {
+      FunCall funcall = ast->as.funcall;
+      if (sdm_svncmp(funcall.name, "println") == 0) {
+        fprintf(sink, "printf(\"");
+        fprintf(sink, "%%f");
+        fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
+        fprintf(sink, ");\n");
+      }
     } break;
     case NODE_TYPE_COUNT: {
       fprintf(stderr, "Unreachable. This is a bug in the C transpiler.\n");
