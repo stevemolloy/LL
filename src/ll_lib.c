@@ -75,6 +75,13 @@ char *token_strings[TOKEN_TYPE_COUNT] = {
   [TOKEN_TYPE_STRING] =     "TOKEN_TYPE_STRING",
 };
 
+char *astnode_type_strings[NODE_TYPE_COUNT] = {
+  [NODE_TYPE_BINOP]   = "NODE_TYPE_BINOP",
+  [NODE_TYPE_LITERAL] = "NODE_TYPE_LITERAL",
+  [NODE_TYPE_VARIABLE] = "NODE_TYPE_VARIABLE",
+  [NODE_TYPE_VARINIT] = "NODE_TYPE_VARINIT",
+};
+
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
   Loc loc = {.line = 1};
   loc.filename = file_data->filename;
@@ -135,13 +142,6 @@ Token *get_current_token(TokenArray *token_array) {
   if (token_array->index >= token_array->length) return NULL;
   return &token_array->data[token_array->index];
 }
-
-char *astnode_type_strings[NODE_TYPE_COUNT] = {
-  [NODE_TYPE_BINOP]   = "NODE_TYPE_BINOP",
-  [NODE_TYPE_LITERAL] = "NODE_TYPE_LITERAL",
-  [NODE_TYPE_VARIABLE] = "NODE_TYPE_VARIABLE",
-  [NODE_TYPE_VARINIT] = "NODE_TYPE_VARINIT",
-};
 
 #define print_ast(ARGS) print_ast_((ARGS), 0)
 void print_ast_(ASTNode *ast, size_t level) {

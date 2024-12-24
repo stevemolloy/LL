@@ -65,6 +65,7 @@ typedef enum {
 typedef enum {
   VAR_TYPE_INT,
   VAR_TYPE_FLOAT,
+  VAR_TYPE_COUNT,
 } VarType;
 
 typedef enum {
@@ -72,6 +73,7 @@ typedef enum {
   BINOP_SUB,
   BINOP_MUL,
   BINOP_DIV,
+  BINOP_COUNT,
 } BinOpType;
 
 typedef struct {
