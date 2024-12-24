@@ -45,6 +45,7 @@ int main(void) {
     print_ast(&program.data[i]);
   }
 
+  shfree(variable_lib);
   sdm_arena_free(&main_arena);
 
   return 0;
