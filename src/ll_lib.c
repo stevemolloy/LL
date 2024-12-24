@@ -139,6 +139,7 @@ Token *get_current_token(TokenArray *token_array) {
 char *astnode_type_strings[NODE_TYPE_COUNT] = {
   [NODE_TYPE_BINOP]   = "NODE_TYPE_BINOP",
   [NODE_TYPE_LITERAL] = "NODE_TYPE_LITERAL",
+  [NODE_TYPE_VARIABLE] = "NODE_TYPE_VARIABLE",
   [NODE_TYPE_VARINIT] = "NODE_TYPE_VARINIT",
 };
 
@@ -167,6 +168,9 @@ void print_ast_(ASTNode *ast, size_t level) {
     } else {
       printf("\n");
     }
+  } else if (ast->type == NODE_TYPE_VARIABLE) {
+    for (size_t i=0; i<level; i++) printf("  ");
+    printf(SDM_SV_F"\n", SDM_SV_Vals(ast->as.variable.name));
   } else {
     printf("No printing method defined for this node type: %s\n", astnode_type_strings[ast->type]);
   }
@@ -189,7 +193,10 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
               SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
       exit(1);
     }
-    return variable_lib[i].value;
+    ASTNode *variable = SDM_MALLOC(sizeof(ASTNode));
+    variable->type = NODE_TYPE_VARIABLE;
+    variable->as.variable = (Variable){.name = next->content};
+    return variable;
   } else if (next->type == TOKEN_TYPE_SEMICOLON) {
     return NULL;
   }

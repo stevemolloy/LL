@@ -58,6 +58,7 @@ typedef enum {
   NODE_TYPE_BINOP,
   NODE_TYPE_LITERAL,
   NODE_TYPE_VARINIT,
+  NODE_TYPE_VARIABLE,
   NODE_TYPE_COUNT,
 } ASTNodeType;
 
@@ -90,12 +91,17 @@ typedef struct {
   ASTNode *init_value;
 } VariableInit;
 
+typedef struct {
+  sdm_string_view name;
+} Variable;
+
 struct ASTNode {
   ASTNodeType type;
   union {
     BinOp binop;
     Literal literal;
     VariableInit var_init;
+    Variable variable;
   } as;
 };
 
