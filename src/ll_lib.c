@@ -83,6 +83,11 @@ char *astnode_type_strings[NODE_TYPE_COUNT] = {
   [NODE_TYPE_FUNCALL]  = "NODE_TYPE_FUNCALL",
 };
 
+char *var_type_strings[VAR_TYPE_COUNT] = {
+  [VAR_TYPE_FLOAT] = "VAR_TYPE_FLOAT",
+  [VAR_TYPE_INT]   = "VAR_TYPE_INT",
+};
+
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
   Loc loc = {.line = 1};
   loc.filename = file_data->filename;
@@ -225,6 +230,46 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
   exit(1);
 }
 
+VarType get_astnode_type(ASTNode *ast) {
+  switch (ast->type) {
+    case NODE_TYPE_BINOP:    return ast->as.binop.result_type;
+    case NODE_TYPE_LITERAL:  return ast->as.literal.type;
+    case NODE_TYPE_VARIABLE: {
+      sdm_string_view varname = ast->as.variable.name;
+      int index = shgeti(variable_lib, sdm_sv_to_cstr(varname));
+      if (index < 0) {
+        fprintf(stderr, "Use of unknown variable '"SDM_SV_F"'. This should have been caught earlier in the compilation.\n", SDM_SV_Vals(varname));
+        exit(1);
+      }
+      return get_astnode_type(variable_lib[index].value);
+    } break;
+    case NODE_TYPE_FUNCALL: {} break;
+    case NODE_TYPE_VARINIT:
+    case NODE_TYPE_COUNT: {
+      fprintf(stderr, "Unreachable. You have found a bug in the type system.\n");
+      exit(1);
+    } break;
+  }
+  fprintf(stderr, "Unreachable. You have found a bug in the type system.\n");
+  exit(1);
+}
+
+VarType calc_binop_resulttype(BinOp *binop) {
+  ASTNode *lhs = binop->lhs;
+  ASTNode *rhs = binop->rhs;
+
+  VarType lhs_type = get_astnode_type(lhs);
+  VarType rhs_type = get_astnode_type(rhs);
+
+  if ((lhs_type == VAR_TYPE_FLOAT) || (rhs_type == VAR_TYPE_FLOAT)) {
+    return VAR_TYPE_FLOAT;
+  } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_INT)) {
+    return VAR_TYPE_INT;
+  }
+  fprintf(stderr, "Unreachable. You have found a bug in the type system.\n");
+  exit(1);
+}
+
 ASTNode *parse_expression_multdiv(TokenArray *token_array) {
   ASTNode *lhs = parse_expression_primary(token_array);
   if (!lhs) return NULL;
@@ -240,6 +285,7 @@ ASTNode *parse_expression_multdiv(TokenArray *token_array) {
       .as.binop.lhs = lhs,
       .as.binop.rhs = rhs,
     };
+    mult->as.binop.result_type = calc_binop_resulttype(&mult->as.binop);
     lhs = mult;
     next = get_current_token(token_array);
   }
@@ -342,6 +388,21 @@ ASTNode *parse_expression(TokenArray *token_array) {
 
     expr_node->as.var_init.init_value = parse_expression_plus_minus(token_array);
     new_var.value = expr_node->as.var_init.init_value;
+    switch (new_var.value->type) {
+      case NODE_TYPE_BINOP: {
+        new_var.value->as.binop.result_type = expr_node->as.var_init.init_type;
+      } break;
+      case NODE_TYPE_LITERAL: {
+        new_var.value->as.literal.type = expr_node->as.var_init.init_type;
+      } break;
+      case NODE_TYPE_FUNCALL:
+      case NODE_TYPE_VARIABLE:
+      case NODE_TYPE_VARINIT:
+      case NODE_TYPE_COUNT: {
+        fprintf(stderr, "Bug in variable init code\n");
+        exit(1);
+      } break;
+    }
     shputs(variable_lib, new_var);
 
     next = get_current_token(token_array);
@@ -411,8 +472,15 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
     case NODE_TYPE_FUNCALL: {
       FunCall funcall = ast->as.funcall;
       if (sdm_svncmp(funcall.name, "println") == 0) {
+        VarType arg_type = get_astnode_type(&funcall.args->data[0]);
         fprintf(sink, "printf(\"");
-        fprintf(sink, "%%f");
+        if (arg_type == VAR_TYPE_INT) {
+          fprintf(sink, "%%d");
+        } else if (arg_type == VAR_TYPE_FLOAT) {
+          fprintf(sink, "%%f");
+        } else {
+          fprintf(stderr, "Not sure how to print a variable of type '%s'\n", var_type_strings[arg_type]);
+        }
         fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
         fprintf(sink, ");\n");
       }

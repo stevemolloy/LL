@@ -80,6 +80,7 @@ typedef enum {
 
 typedef struct {
   BinOpType type;
+  VarType result_type;
   ASTNode *lhs;
   ASTNode *rhs;
 } BinOp;
