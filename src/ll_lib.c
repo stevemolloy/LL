@@ -410,26 +410,10 @@ ASTNode *parse_expression(TokenArray *token_array) {
     }
     shputs(variable_lib, new_var);
 
-    // next = get_current_token(token_array);
-    // if ((next->type != TOKEN_TYPE_SEMICOLON) && (next->type != TOKEN_TYPE_CPAREN)) {
-    //   fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
-    //           SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-    //   exit(1);
-    // }
-    // token_array->index++;
-
     return expr_node;
   }
 
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
-
-  // next = get_current_token(token_array);
-  // if ((next->type != TOKEN_TYPE_SEMICOLON)) {
-  //   fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
-  //           SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-  //   exit(1);
-  // }
-  // token_array->index++;
 
   return expr_node;
 }
