@@ -4,3 +4,4 @@ objs
 compile_commands.json
 a.out
 compiled_file.c
+transpiled_file.c

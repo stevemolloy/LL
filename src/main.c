@@ -45,7 +45,7 @@ int main(void) {
   }
 
   // FILE *sink = stdout;
-  FILE *sink = fopen("compiled_file.c", "w");
+  FILE *sink = fopen("transpiled_file.c", "w");
   transpile_program_to_C(sink, program);
   if (sink != stdout) fclose(sink);
 
