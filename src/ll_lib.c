@@ -212,10 +212,10 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       // This is a function call
       ASTNode *funcall = SDM_MALLOC(sizeof(ASTNode));
       token_array->index++;
+      funcall->type = NODE_TYPE_FUNCALL;
+      funcall->as.funcall.name  = name;
+      funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
       do {
-        funcall->type = NODE_TYPE_FUNCALL;
-        funcall->as.funcall.name  = name;
-        funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
         SDM_ARRAY_PUSH(*funcall->as.funcall.args, *parse_expression(token_array));
         next = get_current_token(token_array);
         if (next->type == TOKEN_TYPE_COMMA) {
