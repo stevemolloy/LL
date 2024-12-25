@@ -8,7 +8,7 @@ SRCS = $(wildcard $(SRC)/*.c)
 OBJS = $(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
 BINDIR = bin
-BIN = $(BINDIR)/test
+BIN = $(BINDIR)/ll
 
 all: $(BIN)
 
@@ -22,10 +22,16 @@ $(OBJ)/%.o: $(SRC)/%.c
 
 clean:
 	rm -rf $(BINDIR) $(OBJ)
+	rm transpiled_file.c
+	rm a.out
 
 $(OBJ):
 	@mkdir -p $@
 
 run: $(BIN)
 	$(BIN)
+
+test: $(BIN)
+	$(BIN)
+	$(CC) transpiled_file.c -ggdb -Wall -Wextra -std=c99 -Wpedantic && ./a.out
 

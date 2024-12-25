@@ -34,6 +34,16 @@ int main(void) {
   SDM_ENSURE_ARRAY_MIN_CAP(program, 1024);
   while (token_array.index < token_array.length) {
     ASTNode *ast = parse_expression(&token_array);
+    Token *next = get_current_token(&token_array);
+    if (next == NULL) {
+      break;
+    }
+    if (next->type != TOKEN_TYPE_SEMICOLON) {
+      fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
+              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
+      exit(1);
+    }
+    token_array.index++;
     if (ast == NULL) break;
     SDM_ARRAY_PUSH(program, *ast);
   }

@@ -210,12 +210,19 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     token_array->index++;
     if ((token_array->index < (token_array->length)) && (get_current_token(token_array)->type == TOKEN_TYPE_OPAREN)) {
       // This is a function call
-      token_array->index++;
       ASTNode *funcall = SDM_MALLOC(sizeof(ASTNode));
-      funcall->type = NODE_TYPE_FUNCALL;
-      funcall->as.funcall.name  = name;
-      funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
-      SDM_ARRAY_PUSH(*funcall->as.funcall.args, *parse_expression(token_array));
+      token_array->index++;
+      do {
+        funcall->type = NODE_TYPE_FUNCALL;
+        funcall->as.funcall.name  = name;
+        funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
+        SDM_ARRAY_PUSH(*funcall->as.funcall.args, *parse_expression(token_array));
+        next = get_current_token(token_array);
+        if (next->type == TOKEN_TYPE_COMMA) {
+          token_array->index++;
+        }
+      } while (next->type != TOKEN_TYPE_CPAREN);
+      token_array->index++;
       return funcall;
     } else {
       int i = shgeti(variable_lib, sdm_sv_to_cstr(name));
@@ -232,9 +239,10 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
   } else if (next->type == TOKEN_TYPE_SEMICOLON) {
     return NULL;
   }
-  fprintf(stderr, SDM_SV_F":%zu:%zu: Unexpected token '"SDM_SV_F"'\n", 
-          SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
-  exit(1);
+  // fprintf(stderr, SDM_SV_F":%zu:%zu: Unexpected token '"SDM_SV_F"'\n", 
+  //         SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
+  // exit(1);
+  return NULL;
 }
 
 VarType get_astnode_type(ASTNode *ast) {
@@ -412,26 +420,26 @@ ASTNode *parse_expression(TokenArray *token_array) {
     }
     shputs(variable_lib, new_var);
 
-    next = get_current_token(token_array);
-    if ((next->type != TOKEN_TYPE_SEMICOLON) && (next->type != TOKEN_TYPE_CPAREN)) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-      exit(1);
-    }
-    token_array->index++;
+    // next = get_current_token(token_array);
+    // if ((next->type != TOKEN_TYPE_SEMICOLON) && (next->type != TOKEN_TYPE_CPAREN)) {
+    //   fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
+    //           SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
+    //   exit(1);
+    // }
+    // token_array->index++;
 
     return expr_node;
   }
 
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
-  next = get_current_token(token_array);
-  if ((next->type != TOKEN_TYPE_SEMICOLON) && (next->type != TOKEN_TYPE_CPAREN)) {
-    fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
-            SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-    exit(1);
-  }
-  token_array->index++;
+  // next = get_current_token(token_array);
+  // if ((next->type != TOKEN_TYPE_SEMICOLON)) {
+  //   fprintf(stderr, SDM_SV_F":%zu:%zu: Missing semicolon or closing brace on or before this line?\n", 
+  //           SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
+  //   exit(1);
+  // }
+  // token_array->index++;
 
   return expr_node;
 }
@@ -488,7 +496,11 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
         } else {
           fprintf(stderr, "Not sure how to print a variable of type '%s'\n", var_type_strings[arg_type]);
         }
-        fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
+        if (funcall.args->data[0].type == NODE_TYPE_VARIABLE) {
+          fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
+        } else if (funcall.args->data[0].type == NODE_TYPE_LITERAL) {
+          fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.literal.value));
+        }
         fprintf(sink, ");\n");
       }
     } break;

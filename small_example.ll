@@ -1,3 +1,5 @@
+println(1);
+
 let periods: int = 2 * 5 * 2;
 let C: float     = 528.0/periods;
 let x: int = 1 + 2 * 3 - 4;
