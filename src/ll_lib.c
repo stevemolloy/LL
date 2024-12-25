@@ -345,9 +345,7 @@ ASTNode *parse_expression(TokenArray *token_array) {
     token_array->index++;
     next = get_current_token(token_array);
     if ((next==NULL) || (next->type != TOKEN_TYPE_SYMBOL)) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: 'let' should be followed by the name of the variable",
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-      exit(1);
+      exit_with_error(next, "'let' should be followed by the name of the variable");
     }
 
     expr_node->as.var_init.name = next->content;
@@ -357,17 +355,13 @@ ASTNode *parse_expression(TokenArray *token_array) {
     token_array->index++;
     next = get_current_token(token_array);
     if ((next==NULL) || (next->type != TOKEN_TYPE_COLON)) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: The variable name in a 'let' expression should be followed by ':' and then the variable type",
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-      exit(1);
+      exit_with_error(next, "The variable name in a 'let' expression should be followed by ':' and then the variable type");
     }
 
     token_array->index++;
     next = get_current_token(token_array);
     if ((next==NULL) || (next->type != TOKEN_TYPE_SYMBOL)) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: The variable name in a 'let' expression should be followed by ':' and then the variable type",
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-      exit(1);
+      exit_with_error(next, "The variable name in a 'let' expression should be followed by ':' and then the variable type");
     }
 
     if (sdm_svncmp(next->content, "int") == 0) {
@@ -383,9 +377,7 @@ ASTNode *parse_expression(TokenArray *token_array) {
     token_array->index++;
     next = get_current_token(token_array);
     if ((next==NULL) || ((next->type != TOKEN_TYPE_ASSIGNMENT) && next->type != TOKEN_TYPE_SEMICOLON)) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: A variable declaration should end with initialisation or terminate with a semicolon \n",
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-      exit(1);
+      exit_with_error(next, "A variable declaration should end with initialisation or terminate with a semicolon");
     }
 
     if (next->type == TOKEN_TYPE_SEMICOLON) {
@@ -396,9 +388,7 @@ ASTNode *parse_expression(TokenArray *token_array) {
     token_array->index++;
     next = get_current_token(token_array);
     if (next==NULL) {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: A variable declaration should end with initialisation or terminate with a semicolon \n",
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col);
-      exit(1);
+      exit_with_error(next, "A variable declaration should end with initialisation or terminate with a semicolon");
     }
 
     expr_node->as.var_init.init_value = parse_expression_plus_minus(token_array);
@@ -524,5 +514,11 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
   fprintf(sink, "\n");
   fprintf(sink, "\treturn 0;\n");
   fprintf(sink, "}\n");
+}
+
+void exit_with_error(Token *token, char *message) {
+  fprintf(stderr, SDM_SV_F":%zu:%zu: %s\n", 
+          SDM_SV_Vals(token->loc.filename), token->loc.line, token->loc.col, message);
+  exit(1);
 }
 

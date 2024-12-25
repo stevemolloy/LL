@@ -148,5 +148,7 @@ ASTNode *parse_expression(TokenArray *token_array);
 void write_astnode_toC(FILE *sink, ASTNode *ast);
 void transpile_program_to_C(FILE *sink, ASTNodeArray program);
 
+void exit_with_error(Token *token, char *message);
+
 #endif //_LL_LIB_H
 
