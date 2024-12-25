@@ -4,7 +4,6 @@
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
-#undef STB_DS_IMPLEMENTATION
 
 #include "sdm_lib.h"
 
@@ -47,23 +46,8 @@ int main(void) {
 
   // FILE *sink = stdout;
   FILE *sink = fopen("compiled_file.c", "w");
-  if (sink == stdout) {
-    printf("\n\n");
-  }
-  fprintf(sink, "#include <stdio.h>\n");
-  fprintf(sink, "\n");
-  fprintf(sink, "int main(void) {\n");
-  for (size_t i=0; i<program.length; i++) {
-    fprintf(sink, "\t");
-    write_astnode_toC(sink, &program.data[i]);
-  }
-  fprintf(sink, "\n");
-  fprintf(sink, "\treturn 0;\n");
-  fprintf(sink, "}\n");
-
-  if (sink != stdout) {
-    fclose(sink);
-  }
+  transpile_program_to_C(sink, program);
+  if (sink != stdout) fclose(sink);
 
   shfree(variable_lib);
   sdm_arena_free(&main_arena);

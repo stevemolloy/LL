@@ -499,3 +499,18 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
   }
 }
 
+void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
+  if (sink == stdout) printf("\n\n");
+
+  fprintf(sink, "#include <stdio.h>\n");
+  fprintf(sink, "\n");
+  fprintf(sink, "int main(void) {\n");
+  for (size_t i=0; i<program.length; i++) {
+    fprintf(sink, "\t");
+    write_astnode_toC(sink, &program.data[i]);
+  }
+  fprintf(sink, "\n");
+  fprintf(sink, "\treturn 0;\n");
+  fprintf(sink, "}\n");
+}
+
