@@ -6,7 +6,7 @@
 //   -- float
 //   -- Drift
 //   -- Quadrupole
-//   -- Bending
+//   -- Bend
 //   -- etc.
 // *********************************************
 
@@ -15,60 +15,60 @@ let c0: float    = 2.99792458e8;
 let periods: int = 20;
 let C: float     = 528.0/periods;
 
-let d1:     Drift = Drift{ L = 0.01 };
-let d2:     Drift = Drift{ L = 0.30311 - 0.1 };
-let d3:     Drift = Drift{ L = 0.40311 - 0.30311 };
-let d4:     Drift = Drift{ L = 0.075 - 0.0375 };
-let twk:    Drift = Drift{ L = 0.25 };
-let d5:     Drift = Drift{ L = 0.0375 };
-let d6:     Drift = Drift{ L = 1.302 - 0.25 };
-let d7:     Drift = Drift{ L = 0.045 };
-let d8:     Drift = Drift{ L = 0.125 - 0.1 };
-let d9:     Drift = Drift{ L = 0.26268 - 0.045 - 0.125 };
-let d10:    Drift = Drift{ L = 0.00608 };
-let d11:    Drift = Drift{ L = 0.1 };
-let d12:    Drift = Drift{ L = 0.025 };
-let d13:    Drift = Drift{ L = 0.118 - 0.1 };
-let d14:    Drift = Drift{ L = 0.161 - 0.118 };
-let d15:    Drift = Drift{ L = 2.55 - 0.161 };
-let d_corr: Drift = Drift{ L = 0.05};
+let d1:     Drift = Drift( L = 0.01 );
+let d2:     Drift = Drift( L = 0.30311 - 0.1 );
+let d3:     Drift = Drift( L = 0.40311 - 0.30311 );
+let d4:     Drift = Drift( L = 0.075 - 0.0375 );
+let twk:    Drift = Drift( L = 0.25 );
+let d5:     Drift = Drift( L = 0.0375 );
+let d6:     Drift = Drift( L = 1.302 - 0.25 );
+let d7:     Drift = Drift( L = 0.045 );
+let d8:     Drift = Drift( L = 0.125 - 0.1 );
+let d9:     Drift = Drift( L = 0.26268 - 0.045 - 0.125 );
+let d10:    Drift = Drift( L = 0.00608 );
+let d11:    Drift = Drift( L = 0.1 );
+let d12:    Drift = Drift( L = 0.025 );
+let d13:    Drift = Drift( L = 0.118 - 0.1 );
+let d14:    Drift = Drift( L = 0.161 - 0.118 );
+let d15:    Drift = Drift( L = 2.55 - 0.161 );
+let d_corr: Drift = Drift( L = 0.05);
 
-let q1   : Quadrupole = Quadrupole{ L = 0.25000, Phi =  0.00000, B_2 =  4.79596 };
-let q2   : Quadrupole = Quadrupole{ L = 0.25000, Phi =  0.00000, B_2 = -4.30427 };
+let q1   : Quadrupole = Quadrupole( L = 0.25000, Phi =  0.00000, B_2 =  4.79596 );
+let q2   : Quadrupole = Quadrupole( L = 0.25000, Phi =  0.00000, B_2 = -4.30427 );
 
-let q3   : Bending = Bending{ L = 0.15000, Phi = -0.04132, B_2 =  3.09361 };
-let r1   : Bending = Bending{ L = 0.15000, Phi = -0.26652, B_2 =  5.46047 };
-let d2_0 : Bending = Bending{ L = 0.36189, Phi =  1.13556, B_2 = -1.15655 };
-let d2_1 : Bending = Bending{ L = 0.05000, Phi =  0.15289, B_2 = -0.84188 };
-let d2_2 : Bending = Bending{ L = 0.05000, Phi =  0.15000, B_2 = -0.82408 };
-let d2_3 : Bending = Bending{ L = 0.05000, Phi =  0.14486, B_2 = -0.48802 };
-let d2_4 : Bending = Bending{ L = 0.05000, Phi =  0.13740, B_2 =  0.09853 };
-let d2_5 : Bending = Bending{ L = 0.05000, Phi =  0.13389, B_2 =  0.11139 };
-let d1_u6: Bending = Bending{ L = 0.05000, Phi = -0.20542, B_2 =  0.00181 };
-let d1_u5: Bending = Bending{ L = 0.05000, Phi = -0.05352, B_2 =  0.00071 };
-let d1_u4: Bending = Bending{ L = 0.05000, Phi =  0.11626, B_2 =  0.00075 };
-let d1_u3: Bending = Bending{ L = 0.05000, Phi =  0.13522, B_2 =  0.00080 };
-let d1_u2: Bending = Bending{ L = 0.05000, Phi =  0.10448, B_2 =  0.00001 };
-let d1_u1: Bending = Bending{ L = 0.05000, Phi =  0.10292, B_2 = -0.00014 };
-let d1_0 : Bending = Bending{ L = 0.20424, Phi =  0.45463, B_2 = -0.36804 };
-let d1_d1: Bending = Bending{ L = 0.05000, Phi =  0.09087, B_2 = -0.00157 };
-let d1_d2: Bending = Bending{ L = 0.05000, Phi =  0.08600, B_2 = -0.00199 };
-let d1_d3: Bending = Bending{ L = 0.05000, Phi =  0.08373, B_2 = -0.00170 };
-let d1_d4: Bending = Bending{ L = 0.05000, Phi =  0.09601, B_2 = -0.00239 };
-let d1_d5: Bending = Bending{ L = 0.05000, Phi =  0.08976, B_2 = -0.00255 };
-let ch:    Bending = Bending{ L = 0.05 };
-let cv:    Bending = Bending{ L = 0.05 };
+let q3   : Bend = Bend( L = 0.15000, Phi = -0.04132, B_2 =  3.09361 );
+let r1   : Bend = Bend( L = 0.15000, Phi = -0.26652, B_2 =  5.46047 );
+let d2_0 : Bend = Bend( L = 0.36189, Phi =  1.13556, B_2 = -1.15655 );
+let d2_1 : Bend = Bend( L = 0.05000, Phi =  0.15289, B_2 = -0.84188 );
+let d2_2 : Bend = Bend( L = 0.05000, Phi =  0.15000, B_2 = -0.82408 );
+let d2_3 : Bend = Bend( L = 0.05000, Phi =  0.14486, B_2 = -0.48802 );
+let d2_4 : Bend = Bend( L = 0.05000, Phi =  0.13740, B_2 =  0.09853 );
+let d2_5 : Bend = Bend( L = 0.05000, Phi =  0.13389, B_2 =  0.11139 );
+let d1_u6: Bend = Bend( L = 0.05000, Phi = -0.20542, B_2 =  0.00181 );
+let d1_u5: Bend = Bend( L = 0.05000, Phi = -0.05352, B_2 =  0.00071 );
+let d1_u4: Bend = Bend( L = 0.05000, Phi =  0.11626, B_2 =  0.00075 );
+let d1_u3: Bend = Bend( L = 0.05000, Phi =  0.13522, B_2 =  0.00080 );
+let d1_u2: Bend = Bend( L = 0.05000, Phi =  0.10448, B_2 =  0.00001 );
+let d1_u1: Bend = Bend( L = 0.05000, Phi =  0.10292, B_2 = -0.00014 );
+let d1_0 : Bend = Bend( L = 0.20424, Phi =  0.45463, B_2 = -0.36804 );
+let d1_d1: Bend = Bend( L = 0.05000, Phi =  0.09087, B_2 = -0.00157 );
+let d1_d2: Bend = Bend( L = 0.05000, Phi =  0.08600, B_2 = -0.00199 );
+let d1_d3: Bend = Bend( L = 0.05000, Phi =  0.08373, B_2 = -0.00170 );
+let d1_d4: Bend = Bend( L = 0.05000, Phi =  0.09601, B_2 = -0.00239 );
+let d1_d5: Bend = Bend( L = 0.05000, Phi =  0.08976, B_2 = -0.00255 );
+let ch:    Bend = Bend( L = 0.05 );
+let cv:    Bend = Bend( L = 0.05 );
 
-let s1: Sextupole = Sextupole{ L = 0.1,  B_3 = -1.24426e+02 };
-let s2: Sextupole = Sextupole{ L = 0.05, B_3 =  9.02251e+01 };
-let s3: Sextupole = Sextupole{ L = 0.05, B_3 =  3.30631e+02 };
-let s4: Sextupole = Sextupole{ L = 0.1,  B_3 = -2.95678e+02 };
+let s1: Sextupole = Sextupole( L = 0.1,  B_3 = -1.24426e+02 );
+let s2: Sextupole = Sextupole( L = 0.05, B_3 =  9.02251e+01 );
+let s3: Sextupole = Sextupole( L = 0.05, B_3 =  3.30631e+02 );
+let s4: Sextupole = Sextupole( L = 0.1,  B_3 = -2.95678e+02 );
 
-let o1: Octupole = Octupole{ L = 0.10000, B_4 =  2.04859e+04 };
-let o2: Octupole = Octupole{ L = 0.10000, B_4 = -2.06184e+04 };
-let o3: Octupole = Octupole{ L = 0.10000, B_4 =  1.44110e+04 };
+let o1: Octupole = Octupole( L = 0.10000, B_4 =  2.04859e+04 );
+let o2: Octupole = Octupole( L = 0.10000, B_4 = -2.06184e+04 );
+let o3: Octupole = Octupole( L = 0.10000, B_4 =  1.44110e+04 );
 
-let cav: Cavity = Cavity{ Frequency = c0/C*h_rf, Voltage = 2*1.50e6, HarNum = h_rf, Phi = 0.0 };
+let cav: Cavity = Cavity( Frequency = c0/C*h_rf, Voltage = 2*1.50e6, HarNum = h_rf, Phi = 0.0 );
 
 let begin: Marker;
 let bpm:   Marker;

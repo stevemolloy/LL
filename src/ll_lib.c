@@ -7,6 +7,7 @@
 #include "ll_lib.h"
 #include "sdm_lib.h"
 #include "stb_ds.h"
+#include "acc_elements.h"
 
 size_t starts_with_float(const char *input) {
   char *endptr;
@@ -84,9 +85,10 @@ char *astnode_type_strings[NODE_TYPE_COUNT] = {
 };
 
 char *var_type_strings[VAR_TYPE_COUNT] = {
-  [VAR_TYPE_FLOAT]  = "VAR_TYPE_FLOAT",
-  [VAR_TYPE_INT]    = "VAR_TYPE_INT",
-  [VAR_TYPE_STRING] = "VAR_TYPE_STRING",
+  [VAR_TYPE_FLOAT]    = "VAR_TYPE_FLOAT",
+  [VAR_TYPE_INT]      = "VAR_TYPE_INT",
+  [VAR_TYPE_ELEDRIFT] = "VAR_TYPE_ELEDRIFT",
+  [VAR_TYPE_STRING]   = "VAR_TYPE_STRING",
 };
 
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
@@ -377,6 +379,8 @@ ASTNode *parse_expression(TokenArray *token_array) {
       expr_node->as.var_init.init_type = VAR_TYPE_INT;
     } else if (sdm_svncmp(next->content, "float") == 0) {
       expr_node->as.var_init.init_type = VAR_TYPE_FLOAT;
+    } else if (sdm_svncmp(next->content, "Drift") == 0) {
+      expr_node->as.var_init.init_type = VAR_TYPE_ELEDRIFT;
     } else {
       fprintf(stderr, SDM_SV_F":%zu:%zu: '"SDM_SV_F"' is not a recognised type\n",
               SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
@@ -409,9 +413,13 @@ ASTNode *parse_expression(TokenArray *token_array) {
       case NODE_TYPE_LITERAL: {
         new_var.value->as.literal.type = expr_node->as.var_init.init_type;
       } break;
-      case NODE_TYPE_FUNCALL:
+      case NODE_TYPE_FUNCALL: {
+        exit_with_error(next, "No idea how to handle variable initialisation with functions yet!");
+      } break;
+      case NODE_TYPE_VARINIT: {
+        exit_with_error(next, "You can't instantiate variables inside a variable instantiation!");
+      } break;
       case NODE_TYPE_VARIABLE:
-      case NODE_TYPE_VARINIT:
       case NODE_TYPE_COUNT: {
         fprintf(stderr, "Bug in variable init code\n");
         exit(1);
