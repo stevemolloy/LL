@@ -9,5 +9,5 @@ println(periods);
 println(C);
 println(x);
 println(y);
-// println("C is equal to {C}");
+println("C is equal to {C}");
 

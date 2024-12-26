@@ -84,8 +84,9 @@ char *astnode_type_strings[NODE_TYPE_COUNT] = {
 };
 
 char *var_type_strings[VAR_TYPE_COUNT] = {
-  [VAR_TYPE_FLOAT] = "VAR_TYPE_FLOAT",
-  [VAR_TYPE_INT]   = "VAR_TYPE_INT",
+  [VAR_TYPE_FLOAT]  = "VAR_TYPE_FLOAT",
+  [VAR_TYPE_INT]    = "VAR_TYPE_INT",
+  [VAR_TYPE_STRING] = "VAR_TYPE_STRING",
 };
 
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
@@ -117,6 +118,7 @@ bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
     } else if (file_contents->data[0] == '"') {
       token.type = TOKEN_TYPE_STRING;
       while (file_contents->data[jump_len] != '"') jump_len++;
+      jump_len++;
     }
     else if (file_contents->data[0] == '=') token.type = TOKEN_TYPE_ASSIGNMENT;
     else if (file_contents->data[0] == ';') token.type = TOKEN_TYPE_SEMICOLON;
@@ -204,6 +206,13 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       num->as.literal.type = VAR_TYPE_FLOAT;
     }
     return num;
+  } else if (next->type == TOKEN_TYPE_STRING) {
+    token_array->index++;
+    ASTNode *stringnode = SDM_MALLOC(sizeof(ASTNode));
+    stringnode->type = NODE_TYPE_LITERAL;
+    stringnode->as.literal.value = next->content;
+    stringnode->as.literal.type = VAR_TYPE_STRING;
+    return stringnode;
   } else if (next->type == TOKEN_TYPE_SYMBOL) {
     // Might be a variable or a function call
     sdm_string_view name = next->content;
@@ -461,19 +470,25 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
     case NODE_TYPE_FUNCALL: {
       FunCall funcall = ast->as.funcall;
       if (sdm_svncmp(funcall.name, "println") == 0) {
-        VarType arg_type = get_astnode_type(&funcall.args->data[0]);
         fprintf(sink, "printf(\"");
-        if (arg_type == VAR_TYPE_INT) {
-          fprintf(sink, "%%d");
-        } else if (arg_type == VAR_TYPE_FLOAT) {
-          fprintf(sink, "%%f");
-        } else {
-          fprintf(stderr, "Not sure how to print a variable of type '%s'\n", var_type_strings[arg_type]);
+
+        for (size_t i=0; i<funcall.args->length; i++) {
+          VarType arg_type = get_astnode_type(&funcall.args->data[i]);
+          if (i != 0) fprintf(sink, " ");
+          if (arg_type == VAR_TYPE_INT) fprintf(sink, "%%d");
+          else if (arg_type == VAR_TYPE_FLOAT) fprintf(sink, "%%f");
+          else if (arg_type == VAR_TYPE_STRING) fprintf(sink, "%%s");
+          else fprintf(stderr, "Not sure how to print a variable of type '%s'\n", var_type_strings[arg_type]);
         }
-        if (funcall.args->data[0].type == NODE_TYPE_VARIABLE) {
-          fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
-        } else if (funcall.args->data[0].type == NODE_TYPE_LITERAL) {
-          fprintf(sink, "\\n\", "SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.literal.value));
+
+        fprintf(sink, "\\n\", ");
+        for (size_t i=0; i<funcall.args->length; i++) {
+          if (funcall.args->data[i].type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[i].as.variable.name));
+          } else if (funcall.args->data[i].type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[i].as.literal.value));
+          }
+          if (i != funcall.args->length-1) fprintf(sink, ", ");
         }
         fprintf(sink, ");\n");
       }

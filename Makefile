@@ -33,5 +33,5 @@ run: $(BIN)
 
 test: $(BIN)
 	$(BIN)
-	$(CC) transpiled_file.c -ggdb -Wall -Wextra -std=c99 -Wpedantic && ./a.out
+	$(CC) transpiled_file.c $(CFLAGS) && ./a.out
 

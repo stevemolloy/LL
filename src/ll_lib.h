@@ -67,6 +67,7 @@ typedef enum {
 typedef enum {
   VAR_TYPE_INT,
   VAR_TYPE_FLOAT,
+  VAR_TYPE_STRING,
   VAR_TYPE_COUNT,
 } VarType;
 
