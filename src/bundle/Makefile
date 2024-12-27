@@ -25,3 +25,6 @@ clean:
 $(OBJ):
 	@mkdir -p $@
 
+run: all
+	$(BIN)
+

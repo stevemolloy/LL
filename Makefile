@@ -35,5 +35,5 @@ run: $(BIN)
 transpiler_out/transpiled_file.c: run
 
 test: transpiler_out/transpiled_file.c
-	@$(MAKE) -C transpiler_out
+	@$(MAKE) -C transpiler_out run
 
