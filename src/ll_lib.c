@@ -338,6 +338,91 @@ ASTNode *parse_expression_plus_minus(TokenArray *token_array) {
   return lhs;
 }
 
+ASTNode *parse_variable_initiation(TokenArray *token_array) {
+  Token *next = get_current_token(token_array);
+
+  ASTNode *expr_node = SDM_MALLOC(sizeof(ASTNode));
+  expr_node->type = NODE_TYPE_VARINIT;
+
+  VariableDefn new_var = {0};
+
+  token_array->index++;
+  next = get_current_token(token_array);
+  if ((next==NULL) || (next->type != TOKEN_TYPE_SYMBOL)) {
+    exit_with_error(next, "'let' should be followed by the name of the variable");
+  }
+
+  expr_node->as.var_init.name = next->content;
+
+  new_var.key = sdm_sv_to_cstr(expr_node->as.var_init.name);
+
+  token_array->index++;
+  next = get_current_token(token_array);
+  if ((next==NULL) || (next->type != TOKEN_TYPE_COLON)) {
+    exit_with_error(next, "The variable name in a 'let' expression should be followed by ':' and then the variable type");
+  }
+
+  token_array->index++;
+  next = get_current_token(token_array);
+  if ((next==NULL) || (next->type != TOKEN_TYPE_SYMBOL)) {
+    exit_with_error(next, "The variable name in a 'let' expression should be followed by ':' and then the variable type");
+  }
+
+  if (sdm_svncmp(next->content, "int") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_INT;
+  } else if (sdm_svncmp(next->content, "float") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_FLOAT;
+  } else if (sdm_svncmp(next->content, "Drift") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEDRIFT;
+  } else {
+    fprintf(stderr, SDM_SV_F":%zu:%zu: '"SDM_SV_F"' is not a recognised type\n",
+            SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
+    exit(1);
+  }
+
+  token_array->index++;
+  next = get_current_token(token_array);
+  if ((next==NULL) || ((next->type != TOKEN_TYPE_ASSIGNMENT) && next->type != TOKEN_TYPE_SEMICOLON)) {
+    exit_with_error(next, "A variable declaration should end with initialisation or terminate with a semicolon");
+  }
+
+  if (next->type == TOKEN_TYPE_SEMICOLON) {
+    token_array->index++;
+    return expr_node;
+  }
+
+  token_array->index++;
+  next = get_current_token(token_array);
+  if (next==NULL) {
+    exit_with_error(next, "A variable declaration should end with initialisation or terminate with a semicolon");
+  }
+
+  expr_node->as.var_init.init_value = parse_expression_plus_minus(token_array);
+  new_var.value = expr_node->as.var_init.init_value;
+  switch (new_var.value->type) {
+    case NODE_TYPE_BINOP: {
+      new_var.value->as.binop.result_type = expr_node->as.var_init.init_type;
+    } break;
+    case NODE_TYPE_LITERAL: {
+      new_var.value->as.literal.type = expr_node->as.var_init.init_type;
+    } break;
+    case NODE_TYPE_FUNCALL: {
+      // Nothing to do.
+    } break;
+    case NODE_TYPE_VARINIT: {
+      exit_with_error(next, "You can't instantiate variables inside a variable instantiation!");
+    } break;
+    case NODE_TYPE_VARIABLE:
+    case NODE_TYPE_COUNT: {
+      fprintf(stderr, "Bug in variable init code\n");
+      exit(1);
+    } break;
+  }
+  shputs(variable_lib, new_var);
+
+  return expr_node;
+}
+
 ASTNode *parse_expression(TokenArray *token_array) {
   Token *next = get_current_token(token_array);
   while ((next != NULL) && (next->type == TOKEN_TYPE_COMMENT)) {
@@ -347,88 +432,9 @@ ASTNode *parse_expression(TokenArray *token_array) {
   if (next == NULL) return NULL;
 
   if (next->type == TOKEN_TYPE_VARINIT) {
-    ASTNode *expr_node = SDM_MALLOC(sizeof(ASTNode));
-    expr_node->type = NODE_TYPE_VARINIT;
-
-    VariableDefn new_var = {0};
-
-    token_array->index++;
-    next = get_current_token(token_array);
-    if ((next==NULL) || (next->type != TOKEN_TYPE_SYMBOL)) {
-      exit_with_error(next, "'let' should be followed by the name of the variable");
-    }
-
-    expr_node->as.var_init.name = next->content;
-
-    new_var.key = sdm_sv_to_cstr(expr_node->as.var_init.name);
-
-    token_array->index++;
-    next = get_current_token(token_array);
-    if ((next==NULL) || (next->type != TOKEN_TYPE_COLON)) {
-      exit_with_error(next, "The variable name in a 'let' expression should be followed by ':' and then the variable type");
-    }
-
-    token_array->index++;
-    next = get_current_token(token_array);
-    if ((next==NULL) || (next->type != TOKEN_TYPE_SYMBOL)) {
-      exit_with_error(next, "The variable name in a 'let' expression should be followed by ':' and then the variable type");
-    }
-
-    if (sdm_svncmp(next->content, "int") == 0) {
-      expr_node->as.var_init.init_type = VAR_TYPE_INT;
-    } else if (sdm_svncmp(next->content, "float") == 0) {
-      expr_node->as.var_init.init_type = VAR_TYPE_FLOAT;
-    } else if (sdm_svncmp(next->content, "Drift") == 0) {
-      expr_node->as.var_init.init_type = VAR_TYPE_ELEDRIFT;
-    } else {
-      fprintf(stderr, SDM_SV_F":%zu:%zu: '"SDM_SV_F"' is not a recognised type\n",
-              SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
-      exit(1);
-    }
-
-    token_array->index++;
-    next = get_current_token(token_array);
-    if ((next==NULL) || ((next->type != TOKEN_TYPE_ASSIGNMENT) && next->type != TOKEN_TYPE_SEMICOLON)) {
-      exit_with_error(next, "A variable declaration should end with initialisation or terminate with a semicolon");
-    }
-
-    if (next->type == TOKEN_TYPE_SEMICOLON) {
-      token_array->index++;
-      return expr_node;
-    }
-
-    token_array->index++;
-    next = get_current_token(token_array);
-    if (next==NULL) {
-      exit_with_error(next, "A variable declaration should end with initialisation or terminate with a semicolon");
-    }
-
-    expr_node->as.var_init.init_value = parse_expression_plus_minus(token_array);
-    new_var.value = expr_node->as.var_init.init_value;
-    switch (new_var.value->type) {
-      case NODE_TYPE_BINOP: {
-        new_var.value->as.binop.result_type = expr_node->as.var_init.init_type;
-      } break;
-      case NODE_TYPE_LITERAL: {
-        new_var.value->as.literal.type = expr_node->as.var_init.init_type;
-      } break;
-      case NODE_TYPE_FUNCALL: {
-        // Nothing to do.
-      } break;
-      case NODE_TYPE_VARINIT: {
-        exit_with_error(next, "You can't instantiate variables inside a variable instantiation!");
-      } break;
-      case NODE_TYPE_VARIABLE:
-      case NODE_TYPE_COUNT: {
-        fprintf(stderr, "Bug in variable init code\n");
-        exit(1);
-      } break;
-    }
-    shputs(variable_lib, new_var);
-
-    return expr_node;
+    return parse_variable_initiation(token_array);
   }
-
+    
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
   return expr_node;

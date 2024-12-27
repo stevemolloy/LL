@@ -145,6 +145,7 @@ void print_ast_(ASTNode *ast, size_t level);
 ASTNode *parse_expression_primary(TokenArray *token_array);
 ASTNode *parse_expression_multdiv(TokenArray *token_array);
 ASTNode *parse_expression_plus_minus(TokenArray *token_array);
+ASTNode *parse_variable_initiation(TokenArray *token_array);
 ASTNode *parse_expression(TokenArray *token_array);
 
 void write_astnode_toC(FILE *sink, ASTNode *ast);
