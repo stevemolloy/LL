@@ -29,6 +29,7 @@ int main(void) {
 
   TokenArray token_array = {0};
   if (!tokenise_input_file(&src_file, &token_array)) return 1;
+  validate_token_array(&token_array);
 
   ASTNodeArray program = {0};
   SDM_ENSURE_ARRAY_MIN_CAP(program, 1024);

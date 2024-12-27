@@ -8,6 +8,79 @@
 #include "sdm_lib.h"
 #include "stb_ds.h"
 
+Token *get_next_token(TokenArray *token_array) {
+  token_array->index++;
+  if (token_array->index >= token_array->length)
+    return NULL;
+  return &token_array->data[token_array->index];
+}
+
+void expect_next_token_type(TokenArray *token_array, TokenType type, char *err_mesg) {
+  Token *token = get_next_token(token_array);
+  if ((token == NULL) || (token->type != type)) {
+    exit_with_error(token, err_mesg);
+  }
+}
+
+void validate_token_array(TokenArray *token_array) {
+  Token *token;
+  while (token_array->index < token_array->length) {
+    token = get_current_token(token_array);
+    while (token->type == TOKEN_TYPE_COMMENT) {
+      token_array->index++;
+      continue;
+    }
+    if (token->type == TOKEN_TYPE_VARINIT) {
+      // Check that variable initialisation can proceed correctly
+      expect_next_token_type(token_array, TOKEN_TYPE_SYMBOL, "The 'let' keyword should be followed by the name of the variable");
+      expect_next_token_type(token_array, TOKEN_TYPE_COLON, "The name of the variable in a 'let' expression should be followed by a ':' and then the type of the variable");
+      expect_next_token_type(token_array, TOKEN_TYPE_SYMBOL, "The name of the variable in a 'let' expression should be followed by a ':' and then the type of the variable");
+      token = get_next_token(token_array);
+      if ((token != NULL) && (token->type == TOKEN_TYPE_SEMICOLON)) {
+        // Declaration with no initialisation
+        continue;
+      }
+      token_array->index--;
+      expect_next_token_type(token_array, TOKEN_TYPE_ASSIGNMENT, "A variable declaration must be followed by a terminating semicolon, or by '=' and the variable initialisation");
+      token = get_next_token(token_array);
+      if ((token == NULL) || (token->type == TOKEN_TYPE_SEMICOLON)) {
+        exit_with_error(token, "Variable assignment RHS is empty");
+      }
+      token = get_next_token(token_array);
+      while ((token != NULL) && (token->type != TOKEN_TYPE_SEMICOLON)) {
+        token = get_next_token(token_array);
+      }
+      token_array->index++;
+    } else if (token->type == TOKEN_TYPE_SYMBOL) {
+      // Variable reassignment?
+      // Calling a function?
+      token = get_next_token(token_array);
+      if (token->type == TOKEN_TYPE_ASSIGNMENT) {
+        // Variable reassignment
+        token = get_next_token(token_array);
+        if ((token == NULL) || (token->type == TOKEN_TYPE_SEMICOLON)) {
+          exit_with_error(token, "Variable reassignment missing a RHS");
+        }
+        token = get_next_token(token_array);
+        while ((token != NULL) && (token->type != TOKEN_TYPE_SEMICOLON)) {
+          token = get_next_token(token_array);
+        }
+        token_array->index++;
+      } else if (token->type == TOKEN_TYPE_OPAREN) {
+        token = get_next_token(token_array);
+        while ((token != NULL) && (token->type != TOKEN_TYPE_SEMICOLON)) {
+          token = get_next_token(token_array);
+        }
+        token_array->index++;
+      }
+    } else {
+      token = get_current_token(token_array);
+      exit_with_error(token, "No idea what to do with this");
+    }
+  }
+  token_array->index = 0;
+}
+
 size_t starts_with_float(const char *input) {
   char *endptr;
 

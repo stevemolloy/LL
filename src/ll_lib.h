@@ -139,6 +139,9 @@ typedef struct {
 
 EXTERN VariableDefn *variable_lib;
 
+Token *get_next_token(TokenArray *token_array);
+void expect_next_token_type(TokenArray *token_array, TokenType type, char *err_mesg);
+void validate_token_array(TokenArray *token_array);
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array);
 size_t starts_with_float(const char *input);
 bool isvalididchar(char c);
