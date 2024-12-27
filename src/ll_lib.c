@@ -7,7 +7,6 @@
 #include "ll_lib.h"
 #include "sdm_lib.h"
 #include "stb_ds.h"
-#include "acc_elements.h"
 
 size_t starts_with_float(const char *input) {
   char *endptr;
@@ -414,7 +413,7 @@ ASTNode *parse_expression(TokenArray *token_array) {
         new_var.value->as.literal.type = expr_node->as.var_init.init_type;
       } break;
       case NODE_TYPE_FUNCALL: {
-        exit_with_error(next, "No idea how to handle variable initialisation with functions yet!");
+        // Nothing to do.
       } break;
       case NODE_TYPE_VARINIT: {
         exit_with_error(next, "You can't instantiate variables inside a variable instantiation!");
@@ -439,6 +438,7 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
   char *vartype_as_C[VAR_TYPE_COUNT] = {
     [VAR_TYPE_INT] = "int",
     [VAR_TYPE_FLOAT] = "double",
+    [VAR_TYPE_ELEDRIFT] = "Drift",
   };
 
   char *binop_as_C[BINOP_COUNT] = {
@@ -499,6 +499,17 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
           if (i != funcall.args->length-1) fprintf(sink, ", ");
         }
         fprintf(sink, ");\n");
+      } else if (sdm_svncmp(funcall.name, "Drift") == 0) {
+        fprintf(sink, "make_drift(");
+        for (size_t i=0; i<funcall.args->length; i++) {
+          if (funcall.args->data[i].type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[i].as.variable.name));
+          } else if (funcall.args->data[i].type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[i].as.literal.value));
+          }
+          if (i != funcall.args->length-1) fprintf(sink, ", ");
+        }
+        fprintf(sink, ")");
       }
     } break;
     case NODE_TYPE_COUNT: {
@@ -513,6 +524,9 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
 
   fprintf(sink, "#include <stdio.h>\n");
   fprintf(sink, "\n");
+  fprintf(sink, "#include \"acc_elements.h\"\n");
+  fprintf(sink, "\n");
+
   fprintf(sink, "int main(void) {\n");
   for (size_t i=0; i<program.length; i++) {
     fprintf(sink, "\t");
