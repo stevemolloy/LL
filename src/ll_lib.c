@@ -429,12 +429,9 @@ ASTNode *parse_expression(TokenArray *token_array) {
     token_array->index++;
     next = get_current_token(token_array);
   }
-  if (next == NULL) return NULL;
 
-  if (next->type == TOKEN_TYPE_VARINIT) {
-    return parse_variable_initiation(token_array);
-  }
-    
+  if (next == NULL) return NULL;
+  if (next->type == TOKEN_TYPE_VARINIT) return parse_variable_initiation(token_array);
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
   return expr_node;
