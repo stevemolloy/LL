@@ -152,6 +152,12 @@ Token *get_current_token(TokenArray *token_array) {
   return &token_array->data[token_array->index];
 }
 
+Token *peek_next_token(TokenArray *token_array) {
+  size_t index = token_array->index + 1;
+  if (index >= token_array->length) return NULL;
+  return &token_array->data[index];
+}
+
 #define print_ast(ARGS) print_ast_((ARGS), 0)
 void print_ast_(ASTNode *ast, size_t level) {
   if (ast->type == NODE_TYPE_BINOP) {
@@ -225,8 +231,19 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       funcall->type = NODE_TYPE_FUNCALL;
       funcall->as.funcall.name  = name;
       funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
+      funcall->as.funcall.named_args = SDM_MALLOC(sizeof(VariableInitArray));
       do {
-        SDM_ARRAY_PUSH(*funcall->as.funcall.args, *parse_expression(token_array));
+        next = get_current_token((token_array));
+        Token *peek = peek_next_token(token_array);
+        if ((peek != NULL) && (peek->type == TOKEN_TYPE_ASSIGNMENT) && (next != NULL) && (next->type == TOKEN_TYPE_SYMBOL)) {
+          VariableInit named_argument = {0};
+          named_argument.name = next->content;
+          token_array->index += 2;
+          named_argument.init_value = parse_expression(token_array);
+          SDM_ARRAY_PUSH(*funcall->as.funcall.named_args, named_argument);
+        } else {
+          SDM_ARRAY_PUSH(*funcall->as.funcall.args, *parse_expression(token_array));
+        }
         next = get_current_token(token_array);
         if (next->type == TOKEN_TYPE_COMMA) {
           token_array->index++;
@@ -504,13 +521,19 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
         fprintf(sink, ");\n");
       } else if (sdm_svncmp(funcall.name, "Drift") == 0) {
         fprintf(sink, "make_drift(");
-        for (size_t i=0; i<funcall.args->length; i++) {
-          if (funcall.args->data[i].type == NODE_TYPE_VARIABLE) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[i].as.variable.name));
-          } else if (funcall.args->data[i].type == NODE_TYPE_LITERAL) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[i].as.literal.value));
+        if (funcall.args->length == 1) {
+          if (funcall.args->data[0].type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
+          } else if (funcall.args->data[0].type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.literal.value));
           }
-          if (i != funcall.args->length-1) fprintf(sink, ", ");
+        } else {
+          ASTNode *len_var = funcall.named_args->data[0].init_value;
+          if (len_var->type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.variable.name));
+          } else if (len_var->type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.literal.value));
+          }
         }
         fprintf(sink, ")");
       }

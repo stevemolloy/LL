@@ -1,4 +1,4 @@
-let d1: Drift = Drift( 0.01 );
+let d1: Drift = Drift( L = 0.01 );
 
 println(1, 2, 3, 4, 5, 6, 7);
 

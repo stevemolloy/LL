@@ -99,6 +99,12 @@ typedef struct {
 } VariableInit;
 
 typedef struct {
+  size_t capacity;
+  size_t length;
+  VariableInit *data;
+} VariableInitArray;
+
+typedef struct {
   sdm_string_view name;
 } Variable;
 
@@ -106,6 +112,7 @@ typedef struct ASTNodeArray ASTNodeArray;
 typedef struct {
   sdm_string_view name;
   ASTNodeArray *args;
+  VariableInitArray *named_args;
 } FunCall;
 
 struct ASTNode {
