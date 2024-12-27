@@ -22,16 +22,18 @@ $(OBJ)/%.o: $(SRC)/%.c
 
 clean:
 	rm -rf $(BINDIR) $(OBJ)
-	rm transpiled_file.c
-	rm a.out
+	rm -rf transpiler_out
 
 $(OBJ):
 	@mkdir -p $@
 
 run: $(BIN)
+	@mkdir -p transpiler_out
+	@cp -pr src/bundle/* transpiler_out
 	$(BIN)
 
-test: $(BIN)
-	$(BIN)
-	$(CC) transpiled_file.c $(CFLAGS) && ./a.out
+transpiler_out/transpiled_file.c: run
+
+test: transpiler_out/transpiled_file.c
+	@$(MAKE) -C transpiler_out
 
