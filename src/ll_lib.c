@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -38,6 +39,7 @@ void validate_token_array(TokenArray *token_array) {
       token = get_next_token(token_array);
       if ((token != NULL) && (token->type == TOKEN_TYPE_SEMICOLON)) {
         // Declaration with no initialisation
+        token_array->index++;
         continue;
       }
       token_array->index--;
@@ -466,6 +468,16 @@ ASTNode *parse_variable_initiation(TokenArray *token_array) {
     expr_node->as.var_init.init_type = VAR_TYPE_ELEDRIFT;
   } else if (sdm_svncmp(next->content, "Quad") == 0) {
     expr_node->as.var_init.init_type = VAR_TYPE_ELEQUAD;
+  } else if (sdm_svncmp(next->content, "Marker") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMARKER;
+  } else if (sdm_svncmp(next->content, "Bend") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEBEND;
+  } else if (sdm_svncmp(next->content, "Sextupole") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELESEXTUPOLE;
+  } else if (sdm_svncmp(next->content, "Octupole") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEOCTUPOLE;
+  } else if (sdm_svncmp(next->content, "Cavity") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELECAVITY;
   } else {
     fprintf(stderr, SDM_SV_F":%zu:%zu: '"SDM_SV_F"' is not a recognised type\n",
             SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
@@ -526,6 +538,26 @@ ASTNode *parse_expression(TokenArray *token_array) {
   ASTNode *expr_node = parse_expression_plus_minus(token_array);
 
   return expr_node;
+}
+
+ASTNode *get_named_variable_value(VariableInitArray *named_args, char *name) {
+  for (size_t i=0; i<named_args->length; i++) {
+    if (sdm_svncmp(named_args->data[i].name, name) == 0) return named_args->data[i].init_value;
+  }
+  return NULL;
+}
+
+void write_variable_defn(FILE *sink, ASTNode *var) {
+  if (var->type == NODE_TYPE_VARIABLE) {
+    fprintf(sink, SDM_SV_F, SDM_SV_Vals(var->as.variable.name));
+  } else if (var->type == NODE_TYPE_LITERAL) {
+    fprintf(sink, SDM_SV_F, SDM_SV_Vals(var->as.literal.value));
+  } else if (var->type == NODE_TYPE_BINOP) {
+    write_astnode_toC(sink, var);
+  } else {
+    fprintf(stderr, "Unable to transpile a variable of type '%s'\n", astnode_type_strings[var->type]);
+    exit(1);
+  }
 }
 
 void write_astnode_toC(FILE *sink, ASTNode *ast) {
@@ -602,54 +634,44 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
         fprintf(sink, ");\n");
       } else if (sdm_svncmp(funcall.name, "Drift") == 0) {
         fprintf(sink, "make_drift(");
-        if (funcall.args->length == 1) {
-          if (funcall.args->data[0].type == NODE_TYPE_VARIABLE) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
-          } else if (funcall.args->data[0].type == NODE_TYPE_LITERAL) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.literal.value));
-          }
-        } else {
-          ASTNode *len_var = funcall.named_args->data[0].init_value;
-          if (len_var->type == NODE_TYPE_VARIABLE) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.variable.name));
-          } else if (len_var->type == NODE_TYPE_LITERAL) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.literal.value));
-          }
-        }
-        fprintf(sink, ")");
+        ASTNode *len_var = funcall.named_args->data[0].init_value;
+        write_variable_defn(sink, len_var); fprintf(sink, ")");
       } else if (sdm_svncmp(funcall.name, "Quad") == 0) {
         fprintf(sink, "make_quad(");
-        if (funcall.args->length == 1) {
-          if (funcall.args->data[0].type == NODE_TYPE_VARIABLE) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
-          } else if (funcall.args->data[0].type == NODE_TYPE_LITERAL) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.literal.value));
-          }
-        } else {
-          ASTNode *var_1 = funcall.named_args->data[0].init_value;
-          ASTNode *var_2 = funcall.named_args->data[1].init_value;
-          ASTNode *len_var = NULL, *k1_var = NULL;
-          if (sdm_svncmp(funcall.named_args->data[0].name, "L") == 0) len_var = var_1;
-          if (sdm_svncmp(funcall.named_args->data[1].name, "L") == 0) len_var = var_2;
-          if (sdm_svncmp(funcall.named_args->data[0].name, "K1") == 0) k1_var = var_1;
-          if (sdm_svncmp(funcall.named_args->data[1].name, "K1") == 0) k1_var = var_2;
-          if ((len_var == NULL) || (k1_var == NULL)) {
-            fprintf(stderr, "'Quad' function needs two arguments: 'L' and 'K1'");
-            exit(1);
-          }
-          if (len_var->type == NODE_TYPE_VARIABLE) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.variable.name));
-          } else if (len_var->type == NODE_TYPE_LITERAL) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.literal.value));
-          }
-          fprintf(sink, ", ");
-          if (k1_var->type == NODE_TYPE_VARIABLE) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(k1_var->as.variable.name));
-          } else if (len_var->type == NODE_TYPE_LITERAL) {
-            fprintf(sink, SDM_SV_F, SDM_SV_Vals(k1_var->as.literal.value));
-          }
-        }
-        fprintf(sink, ")");
+        ASTNode *len_var = get_named_variable_value(funcall.named_args, "L");
+        ASTNode *k1_var = get_named_variable_value(funcall.named_args, "K1");
+        write_variable_defn(sink, len_var); fprintf(sink, ", ");
+        write_variable_defn(sink, k1_var); fprintf(sink, ")");
+      } else if (sdm_svncmp(funcall.name, "Bend") == 0) {
+        fprintf(sink, "make_sbend(");
+        ASTNode *len_var = get_named_variable_value(funcall.named_args, "L");
+        ASTNode *phi_var = get_named_variable_value(funcall.named_args, "Phi");
+        ASTNode *k1_var = get_named_variable_value(funcall.named_args, "K1");
+        write_variable_defn(sink, len_var); fprintf(sink, ", ");
+        write_variable_defn(sink, phi_var); fprintf(sink, ", ");
+        write_variable_defn(sink, k1_var); fprintf(sink, ")");
+      } else if (sdm_svncmp(funcall.name, "Sextupole") == 0) {
+        fprintf(sink, "make_sext(");
+        ASTNode *len_var = get_named_variable_value(funcall.named_args, "L");
+        ASTNode *k2_var = get_named_variable_value(funcall.named_args, "K2");
+        write_variable_defn(sink, len_var); fprintf(sink, ", ");
+        write_variable_defn(sink, k2_var); fprintf(sink, ")");
+      } else if (sdm_svncmp(funcall.name, "Octupole") == 0) {
+        fprintf(sink, "make_oct(");
+        ASTNode *len_var = get_named_variable_value(funcall.named_args, "L");
+        ASTNode *k1_var = get_named_variable_value(funcall.named_args, "K3");
+        write_variable_defn(sink, len_var); fprintf(sink, ", ");
+        write_variable_defn(sink, k1_var); fprintf(sink, ")");
+      } else if (sdm_svncmp(funcall.name, "Cavity") == 0) {
+        fprintf(sink, "make_cavity(");
+        ASTNode *freq_var = get_named_variable_value(funcall.named_args, "Frequency");
+        ASTNode *volt_var = get_named_variable_value(funcall.named_args, "Voltage");
+        ASTNode *harnum_var = get_named_variable_value(funcall.named_args, "HarNum");
+        ASTNode *phi_var = get_named_variable_value(funcall.named_args, "Phi");
+        write_variable_defn(sink, freq_var); fprintf(sink, ", ");
+        write_variable_defn(sink, volt_var); fprintf(sink, ", ");
+        write_variable_defn(sink, harnum_var); fprintf(sink, ", ");
+        write_variable_defn(sink, phi_var); fprintf(sink, ")");
       }
     } break;
     case NODE_TYPE_COUNT: {
