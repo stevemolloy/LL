@@ -35,14 +35,15 @@ int main(void) {
   SDM_ENSURE_ARRAY_MIN_CAP(program, 1024);
   while (token_array.index < token_array.length) {
     ASTNode *ast = parse_expression(&token_array);
+
     Token *next = get_current_token(&token_array);
-    if (next == NULL) break;
-    if (next->type != TOKEN_TYPE_SEMICOLON) {
+    if ((next == NULL) || (next->type != TOKEN_TYPE_SEMICOLON)) {
       exit_with_error(next, "Missing semicolon or closing brace on or before this line?");
     }
-    token_array.index++;
     if (ast == NULL) break;
+
     SDM_ARRAY_PUSH(program, *ast);
+    token_array.index++;
   }
 
   printf("%s\n", buffer);
