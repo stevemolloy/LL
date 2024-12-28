@@ -479,7 +479,6 @@ ASTNode *parse_variable_initiation(TokenArray *token_array) {
   }
 
   if (next->type == TOKEN_TYPE_SEMICOLON) {
-    token_array->index++;
     return expr_node;
   }
 
