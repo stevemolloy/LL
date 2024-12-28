@@ -529,12 +529,18 @@ ASTNode *parse_expression(TokenArray *token_array) {
 }
 
 void write_astnode_toC(FILE *sink, ASTNode *ast) {
-  char *vartype_as_C[VAR_TYPE_COUNT] = {
+  char *vartype_as_C[] = {
     [VAR_TYPE_INT] = "int",
     [VAR_TYPE_FLOAT] = "double",
     [VAR_TYPE_ELEDRIFT] = "Drift",
     [VAR_TYPE_ELEQUAD] = "Quad",
+    [VAR_TYPE_ELEMARKER] = "Marker",
+    [VAR_TYPE_ELEBEND] = "Sbend",
+    [VAR_TYPE_ELESEXTUPOLE] = "Sextupole",
+    [VAR_TYPE_ELEOCTUPOLE] = "Octupole",
+    [VAR_TYPE_ELECAVITY] = "Cavity",
   };
+  static_assert(sizeof(vartype_as_C)/sizeof(vartype_as_C[0]) == VAR_TYPE_COUNT, "Number of variable types does not match number of C declarations");
 
   char *binop_as_C[BINOP_COUNT] = {
     [BINOP_ADD] = "+",
