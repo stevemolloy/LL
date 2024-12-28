@@ -464,6 +464,8 @@ ASTNode *parse_variable_initiation(TokenArray *token_array) {
     expr_node->as.var_init.init_type = VAR_TYPE_FLOAT;
   } else if (sdm_svncmp(next->content, "Drift") == 0) {
     expr_node->as.var_init.init_type = VAR_TYPE_ELEDRIFT;
+  } else if (sdm_svncmp(next->content, "Quad") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEQUAD;
   } else {
     fprintf(stderr, SDM_SV_F":%zu:%zu: '"SDM_SV_F"' is not a recognised type\n",
             SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
@@ -532,6 +534,7 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
     [VAR_TYPE_INT] = "int",
     [VAR_TYPE_FLOAT] = "double",
     [VAR_TYPE_ELEDRIFT] = "Drift",
+    [VAR_TYPE_ELEQUAD] = "Quad",
   };
 
   char *binop_as_C[BINOP_COUNT] = {
@@ -606,6 +609,39 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
             fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.variable.name));
           } else if (len_var->type == NODE_TYPE_LITERAL) {
             fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.literal.value));
+          }
+        }
+        fprintf(sink, ")");
+      } else if (sdm_svncmp(funcall.name, "Quad") == 0) {
+        fprintf(sink, "make_quad(");
+        if (funcall.args->length == 1) {
+          if (funcall.args->data[0].type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.variable.name));
+          } else if (funcall.args->data[0].type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(funcall.args->data[0].as.literal.value));
+          }
+        } else {
+          ASTNode *var_1 = funcall.named_args->data[0].init_value;
+          ASTNode *var_2 = funcall.named_args->data[1].init_value;
+          ASTNode *len_var = NULL, *k1_var = NULL;
+          if (sdm_svncmp(funcall.named_args->data[0].name, "L") == 0) len_var = var_1;
+          if (sdm_svncmp(funcall.named_args->data[1].name, "L") == 0) len_var = var_2;
+          if (sdm_svncmp(funcall.named_args->data[0].name, "K1") == 0) k1_var = var_1;
+          if (sdm_svncmp(funcall.named_args->data[1].name, "K1") == 0) k1_var = var_2;
+          if ((len_var == NULL) || (k1_var == NULL)) {
+            fprintf(stderr, "'Quad' function needs two arguments: 'L' and 'K1'");
+            exit(1);
+          }
+          if (len_var->type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.variable.name));
+          } else if (len_var->type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(len_var->as.literal.value));
+          }
+          fprintf(sink, ", ");
+          if (k1_var->type == NODE_TYPE_VARIABLE) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(k1_var->as.variable.name));
+          } else if (len_var->type == NODE_TYPE_LITERAL) {
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(k1_var->as.literal.value));
           }
         }
         fprintf(sink, ")");
