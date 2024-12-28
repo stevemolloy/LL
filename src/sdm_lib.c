@@ -224,4 +224,12 @@ void sdm_arena_free(sdm_arena_t *arena) {
   SDM_FREE_AND_NULL(arena->next);
 }
 
+bool sdm_sv_compare(sdm_string_view SV1, sdm_string_view SV2) {
+  if (SV1.length != SV2.length) return false;
+  for (size_t i=0; i<SV1.length; i++) {
+    if (SV1.data[i] != SV2.data[i]) return false;
+  }
+  return true;
+}
+
 

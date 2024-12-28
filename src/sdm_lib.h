@@ -145,6 +145,7 @@ int sdm_sv_pop_integer(sdm_string_view *SV);
 char sdm_sv_pop_one_char(sdm_string_view *SV);
 void sdm_sv_trim(sdm_string_view *SV);
 int sdm_svncmp(sdm_string_view SV, const char *cmp);
+bool sdm_sv_compare(sdm_string_view SV1, sdm_string_view SV2);
 
 typedef struct {
   char key[32];
