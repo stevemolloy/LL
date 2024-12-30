@@ -27,10 +27,11 @@ void validate_token_array(TokenArray *token_array) {
   Token *token;
   while (token_array->index < token_array->length) {
     token = get_current_token(token_array);
-    while (token->type == TOKEN_TYPE_COMMENT) {
-      token_array->index++;
+    while ((token != NULL) && (token_array->index < token_array->length) && (token->type == TOKEN_TYPE_COMMENT)) {
+      token = get_next_token(token_array);
       continue;
     }
+    if (token == NULL) break;
     if (token->type == TOKEN_TYPE_VARINIT) {
       // Check that variable initialisation can proceed correctly
       expect_next_token_type(token_array, TOKEN_TYPE_SYMBOL, "The 'let' keyword should be followed by the name of the variable");
@@ -132,7 +133,7 @@ sdm_string_view sv_chop_follow(sdm_string_view *SV, size_t len, Loc *loc) {
   return retval;
 }
 
-char *token_strings[TOKEN_TYPE_COUNT] = {
+char *token_strings[] = {
   [TOKEN_TYPE_SYMBOL]     = "TOKEN_TYPE_SYMBOL",
   [TOKEN_TYPE_VARINIT]    = "TOKEN_TYPE_VARINIT",
   [TOKEN_TYPE_NUMBER]     = "TOKEN_TYPE_NUMBER",
@@ -147,8 +148,10 @@ char *token_strings[TOKEN_TYPE_COUNT] = {
   [TOKEN_TYPE_COLON]      = "TOKEN_TYPE_COLON",
   [TOKEN_TYPE_COMMA]      = "TOKEN_TYPE_COMMA",
   [TOKEN_TYPE_COMMENT]    = "TOKEN_TYPE_COMMENT",
+  [TOKEN_TYPE_POINT]      = "TOKEN_TYPE_POINT",
   [TOKEN_TYPE_STRING]     = "TOKEN_TYPE_STRING",
 };
+static_assert(sizeof(token_strings) / sizeof(token_strings[0]) == TOKEN_TYPE_COUNT, "You forgot to extend the TOKEN_TYPE array");
 
 char *astnode_type_strings[NODE_TYPE_COUNT] = {
   [NODE_TYPE_BINOP]    = "NODE_TYPE_BINOP",
@@ -158,12 +161,15 @@ char *astnode_type_strings[NODE_TYPE_COUNT] = {
   [NODE_TYPE_FUNCALL]  = "NODE_TYPE_FUNCALL",
 };
 
-char *var_type_strings[VAR_TYPE_COUNT] = {
-  [VAR_TYPE_FLOAT]    = "VAR_TYPE_FLOAT",
-  [VAR_TYPE_INT]      = "VAR_TYPE_INT",
-  [VAR_TYPE_ELEDRIFT] = "VAR_TYPE_ELEDRIFT",
-  [VAR_TYPE_STRING]   = "VAR_TYPE_STRING",
+char *var_type_strings[] = {
+  [VAR_TYPE_VOID]    = "VAR_TYPE_VOID",
+  [VAR_TYPE_INT]     = "VAR_TYPE_INT",
+  [VAR_TYPE_FLOAT]   = "VAR_TYPE_FLOAT",
+  [VAR_TYPE_STRING]  = "VAR_TYPE_STRING",
+  [VAR_TYPE_ELEMENT] = "VAR_TYPE_ELEMENT",
+  [VAR_TYPE_LINE]    = "VAR_TYPE_LINE",
 };
+static_assert(sizeof(var_type_strings) / sizeof(var_type_strings[0]) == VAR_TYPE_COUNT, "You forgot to extend var_type_strings");
 
 bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
   Loc loc = {.line = 1};
@@ -207,6 +213,7 @@ bool tokenise_input_file(FileData *file_data, TokenArray *token_array) {
     else if (file_contents->data[0] == '-') token.type = TOKEN_TYPE_SUB;
     else if (file_contents->data[0] == '(') token.type = TOKEN_TYPE_OPAREN;
     else if (file_contents->data[0] == ')') token.type = TOKEN_TYPE_CPAREN;
+    else if (file_contents->data[0] == '.') token.type = TOKEN_TYPE_POINT;
     else {
       fprintf(stderr, "Trying to parse an unknown character, %c\n", file_contents->data[0]);
       return false;
@@ -283,8 +290,10 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     char *endptr = start_ptr;
     strtol(start_ptr, &endptr, 10);
     if ((endptr - start_ptr) == (long)next->content.length) {
+      num->result_type = VAR_TYPE_INT;
       num->as.literal.type = VAR_TYPE_INT;
     } else {
+      num->result_type = VAR_TYPE_FLOAT;
       num->as.literal.type = VAR_TYPE_FLOAT;
     }
     return num;
@@ -292,6 +301,7 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     token_array->index++;
     ASTNode *stringnode = SDM_MALLOC(sizeof(ASTNode));
     stringnode->type = NODE_TYPE_LITERAL;
+    stringnode->result_type = VAR_TYPE_STRING;
     stringnode->as.literal.value = next->content;
     stringnode->as.literal.type = VAR_TYPE_STRING;
     return stringnode;
@@ -302,9 +312,15 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     if ((token_array->index < (token_array->length)) && (get_current_token(token_array)->type == TOKEN_TYPE_OPAREN)) {
       // This is a function call
       ASTNode *funcall = SDM_MALLOC(sizeof(ASTNode));
-      token_array->index++;
       funcall->type = NODE_TYPE_FUNCALL;
       funcall->as.funcall.name  = name;
+      int index = shgeti(builtin_func_sigs, sdm_sv_to_cstr(name));
+      if (index < 0) {
+        token_array->index--;
+        exit_with_error(get_current_token(token_array), "Calling an undefined function.");
+      }
+      funcall->result_type = builtin_func_sigs[index].value.return_type;
+      token_array->index++;
       funcall->as.funcall.args = SDM_MALLOC(sizeof(ASTNodeArray));
       funcall->as.funcall.named_args = SDM_MALLOC(sizeof(VariableInitArray));
       do {
@@ -327,6 +343,7 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       token_array->index++;
       return funcall;
     } else {
+      // This is a variable
       int i = shgeti(variable_lib, sdm_sv_to_cstr(name));
       if (i < 0) {
         fprintf(stderr, SDM_SV_F":%zu:%zu: Undefined variable '"SDM_SV_F"'\n", 
@@ -336,6 +353,7 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       ASTNode *variable = SDM_MALLOC(sizeof(ASTNode));
       variable->type = NODE_TYPE_VARIABLE;
       variable->as.variable = (Variable){.name = next->content};
+      variable->result_type = variable_lib[i].value->result_type;
       return variable;
     }
   } else if (next->type == TOKEN_TYPE_SEMICOLON) {
@@ -465,19 +483,21 @@ ASTNode *parse_variable_initiation(TokenArray *token_array) {
   } else if (sdm_svncmp(next->content, "float") == 0) {
     expr_node->as.var_init.init_type = VAR_TYPE_FLOAT;
   } else if (sdm_svncmp(next->content, "Drift") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELEDRIFT;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
   } else if (sdm_svncmp(next->content, "Quad") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELEQUAD;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
   } else if (sdm_svncmp(next->content, "Marker") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELEMARKER;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
   } else if (sdm_svncmp(next->content, "Bend") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELEBEND;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
   } else if (sdm_svncmp(next->content, "Sextupole") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELESEXTUPOLE;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
   } else if (sdm_svncmp(next->content, "Octupole") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELEOCTUPOLE;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
   } else if (sdm_svncmp(next->content, "Cavity") == 0) {
-    expr_node->as.var_init.init_type = VAR_TYPE_ELECAVITY;
+    expr_node->as.var_init.init_type = VAR_TYPE_ELEMENT;
+  } else if (sdm_svncmp(next->content, "Line") == 0) {
+    expr_node->as.var_init.init_type = VAR_TYPE_LINE;
   } else {
     fprintf(stderr, SDM_SV_F":%zu:%zu: '"SDM_SV_F"' is not a recognised type\n",
             SDM_SV_Vals(next->loc.filename), next->loc.line, next->loc.col, SDM_SV_Vals(next->content));
@@ -505,9 +525,11 @@ ASTNode *parse_variable_initiation(TokenArray *token_array) {
   switch (new_var.value->type) {
     case NODE_TYPE_BINOP: {
       new_var.value->as.binop.result_type = expr_node->as.var_init.init_type;
+      new_var.value->result_type = expr_node->as.var_init.init_type;
     } break;
     case NODE_TYPE_LITERAL: {
       new_var.value->as.literal.type = expr_node->as.var_init.init_type;
+      new_var.value->result_type = expr_node->as.var_init.init_type;
     } break;
     case NODE_TYPE_FUNCALL: {
       // Nothing to do.
@@ -548,6 +570,10 @@ ASTNode *get_named_variable_value(VariableInitArray *named_args, char *name) {
 }
 
 void write_variable_defn(FILE *sink, ASTNode *var) {
+  if (var == NULL) {
+    fprintf(sink, "0.0");
+    return;
+  }
   if (var->type == NODE_TYPE_VARIABLE) {
     fprintf(sink, SDM_SV_F, SDM_SV_Vals(var->as.variable.name));
   } else if (var->type == NODE_TYPE_LITERAL) {
@@ -562,15 +588,11 @@ void write_variable_defn(FILE *sink, ASTNode *var) {
 
 void write_astnode_toC(FILE *sink, ASTNode *ast) {
   char *vartype_as_C[] = {
-    [VAR_TYPE_INT] = "int",
-    [VAR_TYPE_FLOAT] = "double",
-    [VAR_TYPE_ELEDRIFT] = "Drift",
-    [VAR_TYPE_ELEQUAD] = "Quad",
-    [VAR_TYPE_ELEMARKER] = "Marker",
-    [VAR_TYPE_ELEBEND] = "Sbend",
-    [VAR_TYPE_ELESEXTUPOLE] = "Sextupole",
-    [VAR_TYPE_ELEOCTUPOLE] = "Octupole",
-    [VAR_TYPE_ELECAVITY] = "Cavity",
+    [VAR_TYPE_VOID]    = "void",
+    [VAR_TYPE_INT]     = "int",
+    [VAR_TYPE_FLOAT]   = "double",
+    [VAR_TYPE_ELEMENT] = "Element",
+    [VAR_TYPE_LINE]    = "Line",
   };
   static_assert(sizeof(vartype_as_C)/sizeof(vartype_as_C[0]) == VAR_TYPE_COUNT, "Number of variable types does not match number of C declarations");
 
@@ -598,11 +620,19 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
     } break;
     case NODE_TYPE_BINOP: {
       BinOp binop = ast->as.binop;
-      fprintf(sink, "( ");
-      write_astnode_toC(sink, binop.lhs);
-      fprintf(sink, " %s ", binop_as_C[binop.type]);
-      write_astnode_toC(sink, binop.rhs);
-      fprintf(sink, " )");
+      if ((binop.type == BINOP_ADD) && (binop.lhs->result_type == VAR_TYPE_ELEMENT) && (binop.rhs->result_type == VAR_TYPE_ELEMENT)) {
+        fprintf(sink, "concat_two_elements(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else {
+        fprintf(sink, "( ");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, " %s ", binop_as_C[binop.type]);
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, " )");
+      }
     } break;
     case NODE_TYPE_LITERAL: {
       Literal literal = ast->as.literal;
@@ -687,6 +717,14 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
   fprintf(sink, "#include <stdio.h>\n");
   fprintf(sink, "\n");
   fprintf(sink, "#include \"acc_elements.h\"\n");
+  fprintf(sink, "#include \"sdm_lib.h\"\n");
+  fprintf(sink, "\n");
+
+  fprintf(sink, "static sdm_arena_t main_arena = {0};\n");
+  fprintf(sink, "static sdm_arena_t *active_arena = &main_arena;\n");
+  fprintf(sink, "\n");
+  fprintf(sink, "void *active_alloc(size_t size)              { return sdm_arena_alloc(active_arena, size); }\n");
+  fprintf(sink, "void *active_realloc(void *ptr, size_t size) { return sdm_arena_realloc(active_arena, ptr, size); }\n");
   fprintf(sink, "\n");
 
   fprintf(sink, "int main(void) {\n");
@@ -697,11 +735,28 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
   fprintf(sink, "\n");
   fprintf(sink, "\treturn 0;\n");
   fprintf(sink, "}\n");
+  fprintf(sink, "\n");
 }
 
 void exit_with_error(Token *token, char *message) {
   fprintf(stderr, SDM_SV_F":%zu:%zu: %s\n", 
           SDM_SV_Vals(token->loc.filename), token->loc.line, token->loc.col, message);
   exit(1);
+}
+
+FuncSigKV *define_builtin_funcs(void) {
+  FuncSigKV *builtins_dict = NULL;
+  // typedef struct {
+  //   sdm_string_view name;
+  //   VarType return_type;
+  //   VarTypeArray argument_types;
+  // } FuncSig;
+
+  char *drift_f_name = "Drift";
+  VarType drift_f_intypes[] = {VAR_TYPE_FLOAT};
+  FuncSig drift_f_sig = (FuncSig){.name = drift_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=drift_f_intypes, .num_args=sizeof(drift_f_intypes)/sizeof(drift_f_intypes[0])};
+  shput(builtins_dict, drift_f_name, drift_f_sig);
+
+  return builtins_dict;
 }
 

@@ -26,6 +26,7 @@ typedef enum {
   TOKEN_TYPE_COMMA,
   TOKEN_TYPE_COMMENT,
   TOKEN_TYPE_STRING,
+  TOKEN_TYPE_POINT,
   TOKEN_TYPE_COUNT,
 } TokenType;
 
@@ -65,18 +66,32 @@ typedef enum {
 } ASTNodeType;
 
 typedef enum {
+  VAR_TYPE_VOID,
   VAR_TYPE_INT,
   VAR_TYPE_FLOAT,
   VAR_TYPE_STRING,
-  VAR_TYPE_ELEDRIFT,
-  VAR_TYPE_ELEQUAD,
-  VAR_TYPE_ELEMARKER,
-  VAR_TYPE_ELEBEND,
-  VAR_TYPE_ELESEXTUPOLE,
-  VAR_TYPE_ELEOCTUPOLE,
-  VAR_TYPE_ELECAVITY,
+  VAR_TYPE_ELEMENT,
+  VAR_TYPE_LINE,
   VAR_TYPE_COUNT,
 } VarType;
+
+typedef struct {
+  size_t capacity;
+  size_t length;
+  VarType *data;
+} VarTypeArray;
+
+typedef struct {
+  char *name;
+  VarType return_type;
+  VarType *argument_types;
+  size_t num_args;
+} FuncSig;
+
+typedef struct {
+  char *key;
+  FuncSig value;
+} FuncSigKV;
 
 typedef enum {
   BINOP_ADD,
@@ -111,6 +126,7 @@ typedef struct {
 } VariableInitArray;
 
 typedef struct {
+  VarType variable_type;
   sdm_string_view name;
 } Variable;
 
@@ -123,6 +139,7 @@ typedef struct {
 
 struct ASTNode {
   ASTNodeType type;
+  VarType result_type;
   union {
     BinOp binop;
     Literal literal;
@@ -144,6 +161,7 @@ typedef struct {
 } VariableDefn;
 
 EXTERN VariableDefn *variable_lib;
+EXTERN FuncSigKV *builtin_func_sigs;
 
 Token *get_next_token(TokenArray *token_array);
 void expect_next_token_type(TokenArray *token_array, TokenType type, char *err_mesg);
@@ -166,6 +184,7 @@ ASTNode *parse_expression(TokenArray *token_array);
 
 void write_astnode_toC(FILE *sink, ASTNode *ast);
 void transpile_program_to_C(FILE *sink, ASTNodeArray program);
+FuncSigKV *define_builtin_funcs(void);
 
 void exit_with_error(Token *token, char *message);
 

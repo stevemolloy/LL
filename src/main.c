@@ -18,8 +18,11 @@ void *active_realloc(void *ptr, size_t size) { return sdm_arena_realloc(active_a
 
 int main(void) {
   variable_lib = NULL;
+  builtin_func_sigs = define_builtin_funcs();
 
-  char *input_filename = "small_example.ll";
+  // char *input_filename = "small_example.ll";
+  // char *input_filename = "example.ll";
+  char *input_filename = "type_example.ll";
   char *buffer = sdm_read_entire_file(input_filename);
 
   FileData src_file = (FileData) {
@@ -35,18 +38,17 @@ int main(void) {
   SDM_ENSURE_ARRAY_MIN_CAP(program, 1024);
   while (token_array.index < token_array.length) {
     ASTNode *ast = parse_expression(&token_array);
+    if (ast == NULL) break;
 
     Token *next = get_current_token(&token_array);
     if ((next == NULL) || (next->type != TOKEN_TYPE_SEMICOLON)) {
       exit_with_error(next, "Missing semicolon or closing brace on or before this line?");
     }
-    if (ast == NULL) break;
 
     SDM_ARRAY_PUSH(program, *ast);
     token_array.index++;
   }
 
-  printf("%s\n", buffer);
   for (size_t i=0; i<program.length; i++) {
     printf("%zu: ", i);
     print_ast(&program.data[i]);
@@ -58,6 +60,7 @@ int main(void) {
   if (sink != stdout) fclose(sink);
 
   shfree(variable_lib);
+  hmfree(builtin_func_sigs);
   sdm_arena_free(&main_arena);
 
   return 0;
