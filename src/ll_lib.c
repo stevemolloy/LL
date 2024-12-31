@@ -378,7 +378,9 @@ VarType get_astnode_type(ASTNode *ast) {
       }
       return get_astnode_type(variable_lib[index].value);
     } break;
-    case NODE_TYPE_FUNCALL: {} break;
+    case NODE_TYPE_FUNCALL: {
+      return ast->result_type;
+    } break;
     case NODE_TYPE_VARINIT:
     case NODE_TYPE_COUNT: {
       fprintf(stderr, "Unreachable. You have found a bug in the type system.\n");
@@ -396,10 +398,52 @@ VarType calc_binop_resulttype(BinOp *binop) {
   VarType lhs_type = get_astnode_type(lhs);
   VarType rhs_type = get_astnode_type(rhs);
 
-  if ((lhs_type == VAR_TYPE_FLOAT) || (rhs_type == VAR_TYPE_FLOAT)) {
-    return VAR_TYPE_FLOAT;
-  } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_INT)) {
-    return VAR_TYPE_INT;
+  if (binop->type == BINOP_MUL) {
+    if ((lhs_type == VAR_TYPE_FLOAT) || (rhs_type == VAR_TYPE_FLOAT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_FLOAT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_FLOAT) && (rhs_type == VAR_TYPE_INT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_INT)) {
+      return VAR_TYPE_INT;
+    } else if ((lhs_type = VAR_TYPE_INT) && (rhs_type = VAR_TYPE_LINE)) {
+      return VAR_TYPE_LINE;
+    } else if ((lhs_type = VAR_TYPE_LINE) && (rhs_type = VAR_TYPE_INT)) {
+      return VAR_TYPE_LINE;
+    } else if ((lhs_type = VAR_TYPE_INT) && (rhs_type = VAR_TYPE_ELEMENT)) {
+      return VAR_TYPE_ELEMENT;
+    } else if ((lhs_type = VAR_TYPE_ELEMENT) && (rhs_type = VAR_TYPE_INT)) {
+      return VAR_TYPE_LINE;
+    }
+  } else if (binop->type == BINOP_DIV) {
+    if ((lhs_type == VAR_TYPE_FLOAT) || (rhs_type == VAR_TYPE_FLOAT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_FLOAT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_FLOAT) && (rhs_type == VAR_TYPE_INT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_INT)) {
+      return VAR_TYPE_INT;
+    }
+  } else if ((binop->type == BINOP_ADD) || (binop->type == BINOP_SUB)) {
+    if ((lhs_type == VAR_TYPE_FLOAT) || (rhs_type == VAR_TYPE_FLOAT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_FLOAT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_FLOAT) && (rhs_type == VAR_TYPE_INT)) {
+      return VAR_TYPE_FLOAT;
+    } else if ((lhs_type == VAR_TYPE_INT) && (rhs_type == VAR_TYPE_INT)) {
+      return VAR_TYPE_INT;
+    } else if ((lhs_type == VAR_TYPE_ELEMENT) && (rhs_type == VAR_TYPE_ELEMENT)) {
+      return VAR_TYPE_LINE;
+    } else if ((lhs_type == VAR_TYPE_LINE) && (rhs_type == VAR_TYPE_ELEMENT)) {
+      return VAR_TYPE_LINE;
+    } else if ((lhs_type == VAR_TYPE_ELEMENT) && (rhs_type == VAR_TYPE_LINE)) {
+      return VAR_TYPE_LINE;
+    } else if ((lhs_type == VAR_TYPE_LINE) && (rhs_type == VAR_TYPE_LINE)) {
+      return VAR_TYPE_LINE;
+    }
   }
   fprintf(stderr, "Unreachable. You have found a bug in the type system.\n");
   exit(1);
@@ -421,6 +465,7 @@ ASTNode *parse_expression_multdiv(TokenArray *token_array) {
       .as.binop.rhs = rhs,
     };
     mult->as.binop.result_type = calc_binop_resulttype(&mult->as.binop);
+    mult->result_type = mult->as.binop.result_type;
     lhs = mult;
     next = get_current_token(token_array);
   }
@@ -442,6 +487,8 @@ ASTNode *parse_expression_plus_minus(TokenArray *token_array) {
       .as.binop.lhs = lhs,
       .as.binop.rhs = rhs,
     };
+    plus->as.binop.result_type = calc_binop_resulttype(&plus->as.binop);
+    plus->result_type = plus->as.binop.result_type;
     lhs = plus;
     next = get_current_token(token_array);
   }
@@ -626,6 +673,48 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
         fprintf(sink, ", ");
         write_astnode_toC(sink, binop.rhs);
         fprintf(sink, ")");
+      } else if ((binop.type == BINOP_ADD) && (binop.lhs->result_type == VAR_TYPE_LINE) && (binop.rhs->result_type == VAR_TYPE_ELEMENT)) {
+        fprintf(sink, "add_element_to_line(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_ADD) && (binop.lhs->result_type == VAR_TYPE_ELEMENT) && (binop.rhs->result_type == VAR_TYPE_LINE)) {
+        fprintf(sink, "add_line_to_element(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_ADD) && (binop.lhs->result_type == VAR_TYPE_LINE) && (binop.rhs->result_type == VAR_TYPE_LINE)) {
+        fprintf(sink, "add_line_to_line(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_SUB) && (binop.lhs->result_type == VAR_TYPE_ELEMENT) && (binop.rhs->result_type == VAR_TYPE_LINE)) {
+        fprintf(sink, "add_reversedline_to_element(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_SUB) && (binop.lhs->result_type == VAR_TYPE_LINE) && (binop.rhs->result_type == VAR_TYPE_LINE)) {
+        fprintf(sink, "add_reversedline_to_line(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_MUL) && (binop.lhs->result_type == VAR_TYPE_INT) && (binop.rhs->result_type == VAR_TYPE_LINE)) {
+        fprintf(sink, "int_times_line(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_MUL) && (binop.lhs->result_type == VAR_TYPE_LINE) && (binop.rhs->result_type == VAR_TYPE_INT)) {
+        fprintf(sink, "line_times_int(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
       } else {
         fprintf(sink, "( ");
         write_astnode_toC(sink, binop.lhs);
@@ -756,6 +845,36 @@ FuncSigKV *define_builtin_funcs(void) {
   VarType drift_f_intypes[] = {VAR_TYPE_FLOAT};
   FuncSig drift_f_sig = (FuncSig){.name = drift_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=drift_f_intypes, .num_args=sizeof(drift_f_intypes)/sizeof(drift_f_intypes[0])};
   shput(builtins_dict, drift_f_name, drift_f_sig);
+
+  char *quad_f_name = "Quad";
+  VarType quad_f_intypes[] = {VAR_TYPE_FLOAT, VAR_TYPE_FLOAT};
+  FuncSig quad_f_sig = (FuncSig){.name = quad_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=quad_f_intypes, .num_args=sizeof(quad_f_intypes)/sizeof(quad_f_intypes[0])};
+  shput(builtins_dict, quad_f_name, quad_f_sig);
+
+  char *bend_f_name = "Bend";
+  VarType bend_f_intypes[] = {VAR_TYPE_FLOAT, VAR_TYPE_FLOAT, VAR_TYPE_FLOAT};
+  FuncSig bend_f_sig = (FuncSig){.name = bend_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=bend_f_intypes, .num_args=sizeof(bend_f_intypes)/sizeof(bend_f_intypes[0])};
+  shput(builtins_dict, bend_f_name, bend_f_sig);
+
+  char *sext_f_name = "Sextupole";
+  VarType sext_f_intypes[] = {VAR_TYPE_FLOAT, VAR_TYPE_FLOAT};
+  FuncSig sext_f_sig = (FuncSig){.name = sext_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=sext_f_intypes, .num_args=sizeof(sext_f_intypes)/sizeof(sext_f_intypes[0])};
+  shput(builtins_dict, sext_f_name, sext_f_sig);
+
+  char *oct_f_name = "Octupole";
+  VarType oct_f_intypes[] = {VAR_TYPE_FLOAT, VAR_TYPE_FLOAT};
+  FuncSig oct_f_sig = (FuncSig){.name = oct_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=oct_f_intypes, .num_args=sizeof(oct_f_intypes)/sizeof(oct_f_intypes[0])};
+  shput(builtins_dict, oct_f_name, oct_f_sig);
+
+  char *cavity_f_name = "Cavity";
+  VarType cavity_f_intypes[] = {VAR_TYPE_FLOAT, VAR_TYPE_FLOAT};
+  FuncSig cavity_f_sig = (FuncSig){.name = cavity_f_name, .return_type=VAR_TYPE_ELEMENT, .argument_types=cavity_f_intypes, .num_args=sizeof(cavity_f_intypes)/sizeof(cavity_f_intypes[0])};
+  shput(builtins_dict, cavity_f_name, cavity_f_sig);
+
+  char *println_f_name = "println";
+  VarType println_f_intypes[] = {0};
+  FuncSig println_f_sig = (FuncSig){.name = println_f_name, .return_type=VAR_TYPE_VOID, .argument_types=println_f_intypes, .num_args=-1};
+  shput(builtins_dict, println_f_name, println_f_sig);
 
   return builtins_dict;
 }

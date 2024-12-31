@@ -106,6 +106,13 @@ Element make_oct(double len, double K3);
 Element make_cavity(double len, double voltage, double harmonic, double lag);
 Element make_marker(void);
 Line concat_two_elements(Element E1, Element E2);
+Line add_element_to_line(Line line, Element ele);
+Line add_line_to_element(Element ele, Line line);
+Line add_line_to_line(Line l1, Line l2);
+Line add_reversedline_to_element(Element ele, Line line);
+Line add_reversedline_to_line(Line l1, Line l2);
+Line line_times_int(Line line, int repeats);
+Line int_times_line(int repeats, Line line);
 
 #endif // !_ACC_ELEMENTS_H
 

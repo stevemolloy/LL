@@ -20,9 +20,9 @@ int main(void) {
   variable_lib = NULL;
   builtin_func_sigs = define_builtin_funcs();
 
-  // char *input_filename = "small_example.ll";
+  char *input_filename = "small_example.ll";
   // char *input_filename = "example.ll";
-  char *input_filename = "type_example.ll";
+  // char *input_filename = "type_example.ll";
   char *buffer = sdm_read_entire_file(input_filename);
 
   FileData src_file = (FileData) {

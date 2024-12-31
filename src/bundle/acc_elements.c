@@ -62,3 +62,73 @@ Line concat_two_elements(Element E1, Element E2) {
   return retval;
 }
 
+Line add_element_to_line(Line line, Element ele) {
+  Line retval = {0};
+  for (size_t i=0; i<line.length; i++) {
+    SDM_ARRAY_PUSH(retval, line.data[i]);
+  }
+  SDM_ARRAY_PUSH(retval, ele);
+  return retval;
+}
+
+Line add_line_to_element(Element ele, Line line) {
+  Line retval = {0};
+  SDM_ARRAY_PUSH(retval, ele);
+  for (size_t i=0; i<line.length; i++) {
+    SDM_ARRAY_PUSH(retval, line.data[i]);
+  }
+  return retval;
+}
+
+Line add_line_to_line(Line l1, Line l2) {
+  Line retval = {0};
+  for (size_t i=0; i<l1.length; i++) {
+    SDM_ARRAY_PUSH(retval, l1.data[i]);
+  }
+  for (size_t i=0; i<l2.length; i++) {
+    SDM_ARRAY_PUSH(retval, l2.data[i]);
+  }
+  return retval;
+}
+
+Line add_reversedline_to_element(Element ele, Line line) {
+  Line retval = {0};
+  SDM_ARRAY_PUSH(retval, ele);
+
+  for (int i=line.length-1; i>=0; i--) {
+    SDM_ARRAY_PUSH(retval, line.data[i]);
+  }
+  return retval;
+}
+
+Line add_reversedline_to_line(Line l1, Line l2) {
+  Line retval = {0};
+  for (size_t i=0; i<l1.length; i++) {
+    SDM_ARRAY_PUSH(retval, l1.data[i]);
+  }
+  for (int i=l2.length-1; i>=0; i--) {
+    SDM_ARRAY_PUSH(retval, l2.data[i]);
+  }
+  return retval;
+}
+
+Line line_times_int(Line line, int repeats) {
+  Line retval = {0};
+  for (int i=0; i<repeats; i++) {
+    for (size_t j=0; j<line.length; j++) {
+      SDM_ARRAY_PUSH(retval, line.data[j]);
+    }
+  }
+  return retval;
+}
+
+Line int_times_line(int repeats, Line line) {
+  Line retval = {0};
+  for (int i=0; i<repeats; i++) {
+    for (size_t j=0; j<line.length; j++) {
+      SDM_ARRAY_PUSH(retval, line.data[j]);
+    }
+  }
+  return retval;
+}
+

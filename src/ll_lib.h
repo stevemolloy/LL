@@ -85,7 +85,7 @@ typedef struct {
   char *name;
   VarType return_type;
   VarType *argument_types;
-  size_t num_args;
+  int num_args;
 } FuncSig;
 
 typedef struct {
