@@ -737,6 +737,17 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
         write_astnode_toC(sink, binop.lhs);
         fprintf(sink, ", ");
         write_astnode_toC(sink, binop.rhs);
+      } else if ((binop.type == BINOP_MUL) && (binop.lhs->result_type == VAR_TYPE_INT) && (binop.rhs->result_type == VAR_TYPE_ELEMENT)) {
+        fprintf(sink, "int_times_element(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
+        fprintf(sink, ")");
+      } else if ((binop.type == BINOP_MUL) && (binop.lhs->result_type == VAR_TYPE_ELEMENT) && (binop.rhs->result_type == VAR_TYPE_INT)) {
+        fprintf(sink, "element_times_int(");
+        write_astnode_toC(sink, binop.lhs);
+        fprintf(sink, ", ");
+        write_astnode_toC(sink, binop.rhs);
         fprintf(sink, ")");
       } else {
         fprintf(sink, "( ");

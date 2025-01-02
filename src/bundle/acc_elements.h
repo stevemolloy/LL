@@ -175,6 +175,8 @@ Line add_reversedline_to_element(Element ele, Line line);
 Line add_reversedline_to_line(Line l1, Line l2);
 Line line_times_int(Line line, int repeats);
 Line int_times_line(int repeats, Line line);
+Line element_times_int(Element ele, int repeats);
+Line int_times_element(int repeats, Element ele);
 
 void track_thru(double *beam, size_t n_particles, Element element);
 void track(double *beam, size_t n_particles, Element *line, size_t n_elements);

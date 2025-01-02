@@ -153,9 +153,17 @@ Line add_reversedline_to_line(Line l1, Line l2) {
 
 Line line_times_int(Line line, int repeats) {
   Line retval = {0};
-  for (int i=0; i<repeats; i++) {
-    for (size_t j=0; j<line.length; j++) {
-      SDM_ARRAY_PUSH(retval, line.data[j]);
+  if (repeats > 0) {
+    for (int i=0; i<repeats; i++) {
+      for (size_t j=0; j<line.length; j++) {
+        SDM_ARRAY_PUSH(retval, line.data[j]);
+      }
+    }
+  } else {
+    for (int i=0; i<(-repeats); i++) {
+      for (int j=line.length-1; i>=0; i--) {
+        SDM_ARRAY_PUSH(retval, line.data[j]);
+      }
     }
   }
   return retval;
@@ -163,10 +171,34 @@ Line line_times_int(Line line, int repeats) {
 
 Line int_times_line(int repeats, Line line) {
   Line retval = {0};
-  for (int i=0; i<repeats; i++) {
-    for (size_t j=0; j<line.length; j++) {
-      SDM_ARRAY_PUSH(retval, line.data[j]);
+  if (repeats > 0) {
+    for (int i=0; i<repeats; i++) {
+      for (size_t j=0; j<line.length; j++) {
+        SDM_ARRAY_PUSH(retval, line.data[j]);
+      }
     }
+  } else {
+    for (int i=0; i<(-repeats); i++) {
+      for (int j=line.length-1; i>=0; i--) {
+        SDM_ARRAY_PUSH(retval, line.data[j]);
+      }
+    }
+  }
+  return retval;
+}
+
+Line element_times_int(Element ele, int repeats) {
+  Line retval = {0};
+  for (int i=0; i<repeats; i++) {
+    SDM_ARRAY_PUSH(retval, ele);
+  }
+  return retval;
+}
+
+Line int_times_element(int repeats, Element ele) {
+  Line retval = {0};
+  for (int i=0; i<repeats; i++) {
+    SDM_ARRAY_PUSH(retval, ele);
   }
   return retval;
 }
