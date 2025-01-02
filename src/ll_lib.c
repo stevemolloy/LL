@@ -161,6 +161,14 @@ char *astnode_type_strings[NODE_TYPE_COUNT] = {
   [NODE_TYPE_FUNCALL]  = "NODE_TYPE_FUNCALL",
 };
 
+char *binop_type_strings[] = {
+  [BINOP_ADD] = "BINOP_ADD",
+  [BINOP_SUB] = "BINOP_SUB",
+  [BINOP_MUL] = "BINOP_MUL",
+  [BINOP_DIV] = "BINOP_DIV",
+};
+static_assert(sizeof(binop_type_strings) / sizeof(binop_type_strings[0]) == BINOP_COUNT, "You forgot to extend the BINOP_TYPE string array");
+
 char *var_type_strings[] = {
   [VAR_TYPE_VOID]    = "VAR_TYPE_VOID",
   [VAR_TYPE_INT]     = "VAR_TYPE_INT",
@@ -297,6 +305,21 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       num->as.literal.type = VAR_TYPE_FLOAT;
     }
     return num;
+  } else if (next->type == TOKEN_TYPE_SUB) {
+    token_array->index++;
+    ASTNode *subnode = SDM_MALLOC(sizeof(ASTNode));
+    subnode->type = NODE_TYPE_BINOP;
+    subnode->as.binop.type = BINOP_MUL;
+    subnode->as.binop.lhs = SDM_MALLOC(sizeof(ASTNode));
+    subnode->as.binop.lhs->type = NODE_TYPE_LITERAL;
+    subnode->as.binop.lhs->as.literal.type = VAR_TYPE_INT;
+    subnode->as.binop.lhs->as.literal.value = sdm_cstr_as_sv("-1");
+
+    subnode->as.binop.rhs = parse_expression_primary(token_array);
+    subnode->result_type = subnode->as.binop.rhs->result_type;
+    subnode->as.binop.result_type = subnode->as.binop.rhs->result_type;
+
+    return subnode;
   } else if (next->type == TOKEN_TYPE_STRING) {
     token_array->index++;
     ASTNode *stringnode = SDM_MALLOC(sizeof(ASTNode));
@@ -445,7 +468,7 @@ VarType calc_binop_resulttype(BinOp *binop) {
       return VAR_TYPE_LINE;
     }
   }
-  fprintf(stderr, "Unreachable. You have found a bug in the type system.\n");
+  fprintf(stderr, "I don't know how to combine variables of type '%s' and '%s' with '%s'\n", var_type_strings[lhs_type], var_type_strings[rhs_type], binop_type_strings[binop->type]);
   exit(1);
 }
 
