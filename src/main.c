@@ -81,6 +81,8 @@ typedef struct {
   struct ASTNode *data;
 } ASTNodeArray;
 
+ASTNode *parse_expression(TokenArray *token_array);
+
 bool advance_token_index(TokenArray *token_array) {
   token_array->index++;
   return token_array->index >= token_array->length;
@@ -118,6 +120,15 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     num->as.literal.type = VAR_TYPE_INT;
     num->as.literal.value = next->content;
     return num;
+  } else if (next->type == TOKEN_TYPE_OPAREN) {
+    token_array->index++;
+    ASTNode *paren_expr = parse_expression(token_array);
+    if (token_array->data[token_array->index].type != TOKEN_TYPE_CPAREN) {
+      fprintf(stderr, "Unterminated paren expression\n");
+      exit(1);
+    }
+    token_array->index++;
+    return paren_expr;
   }
   return NULL;
 }
