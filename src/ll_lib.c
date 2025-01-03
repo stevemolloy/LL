@@ -305,6 +305,15 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
       num->as.literal.type = VAR_TYPE_FLOAT;
     }
     return num;
+   } else if (next->type == TOKEN_TYPE_OPAREN) {
+     token_array->index++;
+     ASTNode *paren_expr = parse_expression(token_array);
+     if (token_array->data[token_array->index].type != TOKEN_TYPE_CPAREN) {
+       fprintf(stderr, "Unterminated paren expression\n");
+       exit(1);
+     }
+     token_array->index++;
+     return paren_expr;
   } else if (next->type == TOKEN_TYPE_SUB) {
     token_array->index++;
     ASTNode *subnode = SDM_MALLOC(sizeof(ASTNode));
@@ -313,6 +322,7 @@ ASTNode *parse_expression_primary(TokenArray *token_array) {
     subnode->as.binop.lhs = SDM_MALLOC(sizeof(ASTNode));
     subnode->as.binop.lhs->type = NODE_TYPE_LITERAL;
     subnode->as.binop.lhs->as.literal.type = VAR_TYPE_INT;
+    subnode->as.binop.lhs->result_type = VAR_TYPE_INT;
     subnode->as.binop.lhs->as.literal.value = sdm_cstr_as_sv("-1");
 
     subnode->as.binop.rhs = parse_expression_primary(token_array);

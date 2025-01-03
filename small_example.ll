@@ -1,7 +1,9 @@
+let d1: Drift = Drift( L = 0.01 );
+let l1: Line = -d1;
 // let h_rf: int    = 176;
 // let c0: float    = 2.99792458e8;
-let periods: int = 20;
-let zero: int = periods + -periods;
+// let periods: int = 20;
+// let zero: int = periods + -periods;
 // let circumference: float     = 528.0/periods;
 // 
 // let bpm: Marker;
