@@ -172,6 +172,7 @@ bool isvalididchar(char c);
 bool string_starts_with(const char *input, const char *needle);
 void sv_trim_follow(sdm_string_view *SV, Loc *loc);
 sdm_string_view sv_chop_follow(sdm_string_view *SV, size_t len, Loc *loc);
+int evaluate_int_binop(BinOp binop);
 
 Token *get_current_token(TokenArray *token_array);
 #define print_ast(ARGS) print_ast_((ARGS), 0)

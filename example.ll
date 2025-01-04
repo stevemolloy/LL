@@ -82,18 +82,18 @@ let ge:    Drift = Drift(L=0.0);
 // -- * concatenates n of these elements/lines, where n is the int on the lhs of the operator
 // ******************************************************************************************
 
-let b_uc:   Line = d2_0 + d2_1 + d2_2 + d2_3 + d2_4 + d2_5;
-// let i_b_uc: Line = d2_5 + d2_4 + d2_3 + d2_2 + d2_1 + d2_0;
-// let b_mc:   Line = d1_u6 + d1_u5 + d1_u4 + d1_u3 + d1_u2 + d1_u1 + d1_0 + d1_d1 + d1_d2 + d1_d3 + d1_d4 + d1_d5;
-// let i_b_mc: Line = d1_d5 + d1_d4 + d1_d3 + d1_d2 + d1_d1 + d1_0 + d1_u1 + d1_u2 + d1_u3 + d1_u4 + d1_u5 + d1_u6;
-// let m_cell: Line = 
-// 	  s2 + d5 + d4 + q3 + twk + ge + d6 + gs + s1 + d7 + bpm + d8 + ch + cv + d9 + o3 -
-// 	  b_mc + d10 + q2 + d11 + o2 + d12 + q1 + d12 + o1 + d13 + ch + cv + d14 + bpm + ge +
-// 	  d15;
-// let half_cell: Line = s3 + d5 + bpm + d4 + r1 + d3 + cv + ch + d2 + s4 + d1 - b_uc;
-// let unit_cell: Line = half_cell + b_uc + d1 + s4 + ge + d2 + gs + 2 * d_corr + d3 + r1 + d4 + d5 + s3;
-// let sup_per: Line = -m_cell + 2 * unit_cell + half_cell - (half_cell + 2 * unit_cell) + m_cell;
-// let sp: Line = begin + sup_per + cav;
+let b_uc:   Line = Line(d2_0, d2_1, d2_2, d2_3, d2_4, d2_5);
+let i_b_uc: Line = Line(d2_5, d2_4, d2_3, d2_2, d2_1, d2_0);
+let b_mc:   Line = Line(d1_u6, d1_u5, d1_u4, d1_u3, d1_u2, d1_u1, d1_0, d1_d1, d1_d2, d1_d3, d1_d4, d1_d5);
+let i_b_mc: Line = Line(d1_d5, d1_d4, d1_d3, d1_d2, d1_d1, d1_0, d1_u1, d1_u2, d1_u3, d1_u4, d1_u5, d1_u6);
+let m_cell: Line = Line(
+	  s2, d5, d4, q3, twk, ge, d6, gs, s1, d7, bpm, d8, ch, cv, d9, o3,
+	  -b_mc, d10, q2, d11, o2, d12, q1, d12, o1, d13, ch, cv, d14, bpm, ge,
+	  d15);
+let half_cell: Line = Line(s3, d5, bpm, d4, r1, d3, cv, ch, d2, s4, d1, -b_uc);
+let unit_cell: Line = Line(half_cell, b_uc, d1, s4, ge, d2, gs, 2 * d_corr, d3, r1, d4, d5, s3);
+let sup_per: Line = Line(-m_cell, 2 * unit_cell, half_cell, -2 * unit_cell, -half_cell, m_cell);
+let sp: Line = Line(begin, sup_per, cav);
 
 // ******************************
 // Now let's look at some physics

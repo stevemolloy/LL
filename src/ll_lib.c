@@ -666,6 +666,49 @@ void write_variable_defn(FILE *sink, ASTNode *var) {
   }
 }
 
+int evaluate_int_astnode(ASTNode *node){
+  int value;
+
+  switch (node->type) {
+    case NODE_TYPE_LITERAL: {
+      Literal literal = node->as.literal;
+      value = atoi(literal.value.data);
+    } break;
+    case NODE_TYPE_VARIABLE: {
+      int index = shgeti(variable_lib, sdm_sv_to_cstr(node->as.variable.name));
+      if (index < 0) {
+        fprintf(stderr, "Attempted use of undefined variable, '"SDM_SV_F"'\n", SDM_SV_Vals(node->as.variable.name));
+        exit(1);
+      }
+      value = evaluate_int_astnode(variable_lib[index].value);
+    } break;
+    case NODE_TYPE_BINOP: {
+      int lhs = evaluate_int_astnode(node->as.binop.lhs);
+      int rhs = evaluate_int_astnode(node->as.binop.rhs);
+      switch (node->as.binop.type) {
+        case BINOP_ADD: { value = rhs + lhs; } break;
+        case BINOP_SUB: { value = rhs - lhs; } break;
+        case BINOP_MUL: { value = rhs * lhs; } break;
+        case BINOP_DIV: { value = rhs / lhs; } break;
+        case BINOP_COUNT: {
+          fprintf(stderr, "Something has gone badly wrong evaluating a binary operation\n");
+          exit(1);
+        } break;
+      }
+    } break;
+    case NODE_TYPE_FUNCALL: {
+      fprintf(stderr, "Unable to evaluate function calls at this point\n");
+      exit(1);
+    } break;
+    case NODE_TYPE_VARINIT:
+    case NODE_TYPE_COUNT: {
+      fprintf(stderr, "Something has gone badly wrong evaluating an ASTNode\n");
+      exit(1);
+    }
+  }
+  return value;
+}
+
 void write_astnode_toC(FILE *sink, ASTNode *ast) {
   char *vartype_as_C[] = {
     [VAR_TYPE_VOID]    = "void",
@@ -795,6 +838,65 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
           if (i != funcall.args->length-1) fprintf(sink, ", ");
         }
         fprintf(sink, ");\n");
+      } else if (sdm_svncmp(funcall.name, "Line") == 0) {
+        fprintf(sink, "create_line_with_elements(");
+        for (size_t i=0; i<funcall.args->length; i++) {
+          if (funcall.args->data[i].type == NODE_TYPE_VARIABLE) {
+            Variable argument = funcall.args->data[i].as.variable;
+            int index = shgeti(variable_lib, sdm_sv_to_cstr(argument.name));
+            if (index < 0) {
+              fprintf(stderr, "Unknown variable, '"SDM_SV_F"'\n", SDM_SV_Vals(argument.name));
+              exit(1);
+            }
+            ASTNode *variable = variable_lib[index].value;
+            if (variable->result_type == VAR_TYPE_ELEMENT) {
+              fprintf(sink, "ARG_ELEMENT, ");
+            } else if (variable->result_type == VAR_TYPE_LINE) {
+              fprintf(sink, "ARG_LINE, ");
+            } else {
+              fprintf(stderr, "Wrong type of variable\n");
+              exit(1);
+            }
+            fprintf(sink, SDM_SV_F, SDM_SV_Vals(argument.name));
+          } else if (funcall.args->data[i].type == NODE_TYPE_BINOP) {
+            BinOp op = funcall.args->data[i].as.binop;
+            if (op.lhs->result_type == VAR_TYPE_INT && op.rhs->result_type == VAR_TYPE_ELEMENT) {
+              int lhs = evaluate_int_astnode(op.lhs);
+              for (int i=0; i<abs(lhs); i++) {
+                fprintf(sink, "ARG_ELEMENT, ");
+                fprintf(sink, SDM_SV_F, SDM_SV_Vals(op.rhs->as.variable.name));
+                if (i != abs(lhs)-1) fprintf(sink, ", ");
+              }
+            } else if (op.lhs->result_type == VAR_TYPE_ELEMENT && op.rhs->result_type == VAR_TYPE_INT ) {
+              int rhs = evaluate_int_astnode(op.lhs);
+              for (int i=0; i<abs(rhs); i++) {
+                fprintf(sink, "ARG_ELEMENT, ");
+                fprintf(sink, SDM_SV_F, SDM_SV_Vals(op.lhs->as.variable.name));
+                if (i != abs(rhs)-1) fprintf(sink, ", ");
+              }
+            } else if (op.lhs->result_type == VAR_TYPE_INT && op.rhs->result_type == VAR_TYPE_LINE) {
+              int lhs = evaluate_int_astnode(op.lhs);
+              if (lhs > 0) {
+                for (int i=0; i<lhs; i++) {
+                  fprintf(sink, "ARG_LINE, ");
+                  fprintf(sink, SDM_SV_F, SDM_SV_Vals(op.rhs->as.variable.name));
+                  if (i != abs(lhs)-1) fprintf(sink, ", ");
+                }
+              } else {
+                for (int i=0; i<abs(lhs); i++) {
+                  fprintf(sink, "ARG_LINE, ");
+                  fprintf(sink, "reverse_line("SDM_SV_F")", SDM_SV_Vals(op.rhs->as.variable.name));
+                  if (i != abs(lhs)-1) fprintf(sink, ", ");
+                }
+              }
+            }
+          } else {
+            fprintf(stderr, "uh oh!\n");
+            exit(1);
+          }
+          if (i != funcall.args->length-1) fprintf(sink, ", ");
+        };
+        fprintf(sink, ", -1)");
       } else if (sdm_svncmp(funcall.name, "Drift") == 0) {
         fprintf(sink, "make_drift(");
         ASTNode *len_var = funcall.named_args->data[0].init_value;
@@ -919,6 +1021,11 @@ FuncSigKV *define_builtin_funcs(void) {
   VarType println_f_intypes[] = {0};
   FuncSig println_f_sig = (FuncSig){.name = println_f_name, .return_type=VAR_TYPE_VOID, .argument_types=println_f_intypes, .num_args=-1};
   shput(builtins_dict, println_f_name, println_f_sig);
+
+  char *line_f_name = "Line";
+  VarType line_f_intypes[] = {0};
+  FuncSig line_f_sig = (FuncSig){.name = line_f_name, .return_type=VAR_TYPE_LINE, .argument_types=line_f_intypes, .num_args=-1};
+  shput(builtins_dict, line_f_name, line_f_sig);
 
   return builtins_dict;
 }
