@@ -6,6 +6,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
@@ -91,6 +92,40 @@ Element make_cavity(double len, double voltage, double harmonic, double lag) {
   };
   make_r_matrix(&ele);
   return ele;
+}
+
+Line create_line_with_elements_(int nop, ...) {
+  Line line = {0};
+
+  va_list args;
+  va_start(args, nop);
+
+  int raw_type = va_arg(args, int);
+  while (raw_type >= 0) {
+    // Read the type of the argument
+    ArgType type = (ArgType)raw_type;
+    if (type == ARG_ELEMENT) {
+      Element elem = va_arg(args, Element);
+      SDM_ARRAY_PUSH(line, elem);
+    } else if (type == ARG_LINE) {
+      Line other_line = va_arg(args, Line);
+      for (size_t j = 0; j < other_line.length; j++) {
+        SDM_ARRAY_PUSH(line, other_line.data[j]);
+      }
+    }
+    raw_type = va_arg(args, int);
+  }
+
+  va_end(args);
+  return line;
+}
+
+Line reverse_line(Line line) {
+  Line retval = {0};
+  for (int i=line.length-1 ; i>=0; i--) {
+    SDM_ARRAY_PUSH(retval, line.data[i]);
+  }
+  return retval;
 }
 
 Line concat_two_elements(Element E1, Element E2) {

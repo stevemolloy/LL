@@ -160,6 +160,15 @@ typedef struct {
   Line value;
 } LineItem;
 
+typedef enum {
+    ARG_ELEMENT,
+    ARG_LINE
+} ArgType;
+
+#define create_line_with_elements(...) create_line_with_elements_(42, __VA_ARGS__)
+Line create_line_with_elements_(int nop, ...);
+Line reverse_line(Line line);
+
 Element make_drift(double len);
 Element make_quad(double len, double K1);
 Element make_sbend(double len, double phi, double K1);
