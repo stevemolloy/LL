@@ -76,11 +76,6 @@ let gs:    Drift = Drift(L=0.0);
 let ge:    Drift = Drift(L=0.0);
 
 // ******************************************************************************************
-// +, -, and * are implemented for variables of type, Quad, Drift, etc.:
-// -- + concatenates the elements into a Line
-// -- - reverses the Line on the rhs of the operator and concatenates this onto the lhs
-// -- * concatenates n of these elements/lines, where n is the int on the lhs of the operator
-// ******************************************************************************************
 
 let b_uc:   Line = Line(d2_0, d2_1, d2_2, d2_3, d2_4, d2_5);
 let i_b_uc: Line = Line(d2_5, d2_4, d2_3, d2_2, d2_1, d2_0);
@@ -94,6 +89,10 @@ let half_cell: Line = Line(s3, d5, bpm, d4, r1, d3, cv, ch, d2, s4, d1, -b_uc);
 let unit_cell: Line = Line(half_cell, b_uc, d1, s4, ge, d2, gs, 2 * d_corr, d3, r1, d4, d5, s3);
 let sup_per: Line = Line(-m_cell, 2 * unit_cell, half_cell, -2 * unit_cell, -half_cell, m_cell);
 let sp: Line = Line(begin, sup_per, cav);
+
+// ************************************
+// The following is not yet implemented
+// ************************************
 
 // ******************************
 // Now let's look at some physics
