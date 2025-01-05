@@ -28,9 +28,8 @@ $(OBJ):
 	@mkdir -p $@
 
 run: $(BIN)
-	@mkdir -p transpiler_out
-	@cp -pr src/bundle/* transpiler_out
 	$(BIN)
+	@cp -pr src/bundle/* transpiler_out
 
 transpiler_out/transpiled_file.c: run
 

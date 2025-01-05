@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS = -Wall -Wpedantic -Wextra -std=c11 -ggdb
+CFLAGS = -Wall -Wno-unused-variable -Wpedantic -Wextra -std=c11 -ggdb
 CLIBS = -lm -lcblas
 
 OBJ = objs

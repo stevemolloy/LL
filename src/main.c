@@ -1,6 +1,12 @@
+#include "bundle/sdm_lib.h"
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <strings.h>
+
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -15,69 +21,6 @@ static sdm_arena_t *active_arena = &main_arena;
 
 void *active_alloc(size_t size)              { return sdm_arena_alloc(active_arena, size); }
 void *active_realloc(void *ptr, size_t size) { return sdm_arena_realloc(active_arena, ptr, size); }
-
-// VarType get_binop_result_type(BinOp *binop) {
-//   ASTNode *lhs = binop->lhs;
-//   ASTNode *rhs = binop->rhs;
-//
-//   VarType lhs_type, rhs_type;
-//   switch (lhs->type) {
-//     case NODE_TYPE_BINOP: {
-//       lhs_type = get_binop_result_type(&lhs->as.binop);
-//     } break;
-//     case NODE_TYPE_LITERAL: {
-//       lhs_type = lhs->as.literal.type;
-//     } break;
-//     case NODE_TYPE_VARIABLE: {
-//       lhs_type = lhs->as.variable
-//     } break;
-//     case NODE_TYPE_FUNCALL: {} break;
-//     case NODE_TYPE_VARINIT:
-//     case NODE_TYPE_COUNT: {
-//       fprintf(stderr, "Reached the unreachable\n");
-//       exit(1);
-//     } break;
-//   }
-// }
-
-void check_astnode(ASTNode *ast) {
-  char *astnode_type_strings[] = {
-    [NODE_TYPE_BINOP]    = "NODE_TYPE_BINOP",
-    [NODE_TYPE_LITERAL]  = "NODE_TYPE_LITERAL",
-    [NODE_TYPE_VARIABLE] = "NODE_TYPE_VARIABLE",
-    [NODE_TYPE_VARINIT]  = "NODE_TYPE_VARINIT",
-    [NODE_TYPE_FUNCALL]  = "NODE_TYPE_FUNCALL",
-  };
-  static_assert(sizeof(astnode_type_strings) / sizeof(astnode_type_strings[0]) == NODE_TYPE_COUNT,
-                "You forgot to extend 'astnode_type_strings'\n");
-
-  switch (ast->type) {
-    case NODE_TYPE_BINOP:    {
-      fprintf(stderr, "Unable to check nodes of type '%s'\n", astnode_type_strings[ast->type]);
-      exit(1);
-    } break;
-    case NODE_TYPE_LITERAL:  {
-      fprintf(stderr, "Unable to check nodes of type '%s'\n", astnode_type_strings[ast->type]);
-      exit(1);
-    } break;
-    case NODE_TYPE_VARINIT:  {
-      fprintf(stderr, "Unable to check nodes of type '%s'\n", astnode_type_strings[ast->type]);
-      exit(1);
-    } break;
-    case NODE_TYPE_VARIABLE: {
-      fprintf(stderr, "Unable to check nodes of type '%s'\n", astnode_type_strings[ast->type]);
-      exit(1);
-    } break;
-    case NODE_TYPE_FUNCALL:  {
-      fprintf(stderr, "Unable to check nodes of type '%s'\n", astnode_type_strings[ast->type]);
-      exit(1);
-    } break;
-    case NODE_TYPE_COUNT: {
-      fprintf(stderr, "Reached the unreachable. Bug in the AST generator");
-      exit(1);
-    }
-  }
-}
 
 int main(void) {
   variable_lib = NULL;
@@ -113,15 +56,64 @@ int main(void) {
     token_array.index++;
   }
 
-  for (size_t i=0; i<program.length; i++) {
-    printf("%zu: ", i);
-    print_ast(&program.data[i]);
+  errno = 0;
+  char *transpiler_output_dir = "transpiler_out";
+  char *transpiled_filename = "transpiled_file.c";
+  char *full_transpiled_path = SDM_MALLOC(strlen(transpiler_output_dir) + 1 + strlen(transpiled_filename) + 1);
+  sprintf(full_transpiled_path, "%s/%s", transpiler_output_dir, transpiled_filename);
+  struct stat info;
+  if ((stat(transpiler_output_dir, &info) != 0) || !S_ISDIR(info.st_mode)) {
+    errno = 0;
+    if (mkdir(transpiler_output_dir, 0755) < 0) {
+      fprintf(stderr, "ERROR: Could not create %s due to %s\n", transpiler_output_dir, strerror(errno));
+      exit(1);
+    }
   }
-
-  // FILE *sink = stdout;
-  FILE *sink = fopen("transpiler_out/transpiled_file.c", "w");
+  FILE *sink = fopen(full_transpiled_path, "w");
+  if (sink == NULL) {
+    fprintf(stderr, "ERROR: Could not open %s due to %s\n", transpiled_filename, strerror(errno));
+    exit(1);
+  }
   transpile_program_to_C(sink, program);
   if (sink != stdout) fclose(sink);
+
+  char *files_to_copy[] = {
+    "acc_elements.c",
+    "acc_elements.h",
+    "lib.c",
+    "lib.h",
+    "Makefile",
+    "sdm_lib.c",
+    "sdm_lib.h",
+    "stb_ds.h",
+  };
+  size_t num_files_to_copy = sizeof(files_to_copy) / sizeof(files_to_copy[0]);
+  for (size_t i=0; i<num_files_to_copy; i++) {
+    char *src_directory = "src/bundle/";
+    char *src_path = SDM_MALLOC(strlen(src_directory) + strlen(files_to_copy[i]) + 1);
+    char *dst_path = SDM_MALLOC(strlen(transpiler_output_dir) + 1 + strlen(files_to_copy[i]) + 1);
+    sprintf(src_path, "%s%s", src_directory, files_to_copy[i]);
+    sprintf(dst_path, "%s/%s", transpiler_output_dir, files_to_copy[i]);
+
+    FILE *src = fopen(src_path, "rb");
+    if (src==NULL) {
+      fprintf(stderr, "Could not open %s for copying: %s\n", src_path, strerror(errno));
+      exit(1);
+    }
+    FILE *dst = fopen(dst_path, "wb");
+    if (dst==NULL) {
+      fprintf(stderr, "Could not open dst file for copying: %s\n", strerror(errno));
+      exit(1);
+    }
+    char buffer[4096];
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+        fwrite(buffer, 1, bytes_read, dst);
+    }
+
+    fclose(src);
+    fclose(dst);
+  }
 
   shfree(variable_lib);
   hmfree(builtin_func_sigs);
