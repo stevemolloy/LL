@@ -897,6 +897,10 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
           if (i != funcall.args->length-1) fprintf(sink, ", ");
         };
         fprintf(sink, ", -1)");
+      } else if (sdm_svncmp(funcall.name, "get_length_of_line") == 0) {
+        fprintf(sink, "calculate_line_length(&");
+        ASTNode line_var = funcall.args->data[0];
+        write_variable_defn(sink, &line_var); fprintf(sink, ")");
       } else if (sdm_svncmp(funcall.name, "Drift") == 0) {
         fprintf(sink, "make_drift(");
         ASTNode *len_var = funcall.named_args->data[0].init_value;
@@ -971,14 +975,13 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
   }
   fprintf(sink, "\n");
   // fprintf(sink, "\tconst double gamma_0 = 3.0 * 1e9 / ELECTRON_MASS;\n");
-  fprintf(sink, "\tdouble line_length = calculate_line_length(&sp);\n");
   fprintf(sink, "\tprintf(\"line_length = %%f\\n\", line_length);\n");
-  fprintf(sink, "\tdouble line_angle = calculate_line_angle(&sp);\n");
-  fprintf(sink, "\tprintf(\"line_angle = %%f\\n\", line_angle);\n");
-  fprintf(sink, "\tfor (size_t i=0; i<sp.length; i++) { fprintf(stdout, \"%%zu: \", i+1); element_print(stdout, sp.data[i]); rmatrix_print(stdout, sp.data[i].R_matrix); fprintf(stdout, \"\\n\"); }\n");
+  // fprintf(sink, "\tdouble line_angle = calculate_line_angle(&sp);\n");
+  // fprintf(sink, "\tprintf(\"line_angle = %%f\\n\", line_angle);\n");
+  // fprintf(sink, "\tfor (size_t i=0; i<sp.length; i++) { fprintf(stdout, \"%%zu: \", i+1); element_print(stdout, sp.data[i]); rmatrix_print(stdout, sp.data[i].R_matrix); fprintf(stdout, \"\\n\"); }\n");
   fprintf(sink, "\tdouble line_matrix[BEAM_DOFS*BEAM_DOFS] = {0};\n");
   // fprintf(sink, "\tdouble total_matrix[BEAM_DOFS*BEAM_DOFS] = {0};\n");
-  fprintf(sink, "\tdouble /*x_trace, y_trace,*/ I[5] = {0};\n");
+  // fprintf(sink, "\tdouble /*x_trace, y_trace,*/ I[5] = {0};\n");
   // fprintf(sink, "\tdouble I_1, I_2, I_3, I_4, I_5;\n");
   // fprintf(sink, "\tdouble j_x, T_0;\n");
   // fprintf(sink, "\tLinOptsParams lin_opt_params = {0};\n");
@@ -1045,6 +1048,11 @@ FuncSigKV *define_builtin_funcs(void) {
   VarType line_f_intypes[] = {0};
   FuncSig line_f_sig = (FuncSig){.name = line_f_name, .return_type=VAR_TYPE_LINE, .argument_types=line_f_intypes, .num_args=-1};
   shput(builtins_dict, line_f_name, line_f_sig);
+
+  char *line_length_f_name = "get_length_of_line";
+  VarType line_length_f_intypes[] = {VAR_TYPE_LINE};
+  FuncSig line_length_f_sig = (FuncSig){.name = line_length_f_name, .return_type=VAR_TYPE_LINE, .argument_types=line_length_f_intypes, .num_args=sizeof(line_length_f_intypes)/sizeof(line_length_f_intypes[0])};
+  shput(builtins_dict, line_length_f_name, line_length_f_sig);
 
   return builtins_dict;
 }

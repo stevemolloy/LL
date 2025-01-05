@@ -98,6 +98,9 @@ let sp: Line = Line(begin, sup_per, cav);
 // Now let's look at some physics
 // ******************************
 
+let line_length: float = get_length_of_line(sp);
+println("Line length = ", line_length, " m");
+
 // println("Line contains {len(sp)} elements");
 // println("Line length = {line_length(sp)} m");
 // 
