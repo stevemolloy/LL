@@ -82,10 +82,11 @@ Element make_oct(double len, double K3) {
   return ele;
 }
 
-Element make_cavity(double len, double voltage, double harmonic, double lag) {
+Element make_cavity(double frequency, double voltage, double harmonic, double lag) {
   Element ele = (Element) {
     .type = ELETYPE_CAVITY,
-    .as.cavity.length = len,
+    .as.cavity.length = 0.0,
+    .as.cavity.frequency = frequency,
     .as.cavity.voltage = voltage,
     .as.cavity.harmonic = harmonic,
     .as.cavity.lag = lag,
@@ -300,21 +301,21 @@ void track(double *beam, size_t n_particles, Element *line, size_t n_elements) {
   }
 }
 
-double synch_rad_integral_2(Element *line) {
+double synch_rad_integral_2(Line *line) {
   double I_2 = 0;
-  for (size_t i=0; i<arrlenu(line); i++) {
-    double rho = bending_radius_of_element(line[i]);
-    I_2 += element_length(line[i]) / pow(rho, 2);
+  for (size_t i=0; i<line->length; i++) {
+    double rho = bending_radius_of_element(line->data[i]);
+    I_2 += element_length(line->data[i]) / pow(rho, 2);
   }
 
   return I_2;
 }
 
-double synch_rad_integral_3(Element *line) {
+double synch_rad_integral_3(Line *line) {
   double I_3 = 0;
-  for (size_t i=0; i<arrlenu(line); i++) {
-    double rho_abs = fabs(bending_radius_of_element(line[i]));
-    I_3 += element_length(line[i]) / pow(rho_abs, 3);
+  for (size_t i=0; i<line->length; i++) {
+    double rho_abs = fabs(bending_radius_of_element(line->data[i]));
+    I_3 += element_length(line->data[i]) / pow(rho_abs, 3);
   }
 
   return I_3;
@@ -782,12 +783,12 @@ void element_print(FILE *sink, Element element) {
   }
 }
 
-double calculate_line_angle(Element *line) {
+double calculate_line_angle(Line *line) {
   double total_angle = 0;
-  for (size_t i=0; i<arrlenu(line); i++) {
-    switch (line[i].type) {
+  for (size_t i=0; i<line->length; i++) {
+    switch (line->data[i].type) {
       case ELETYPE_SBEND:
-        total_angle += line[i].as.sbend.angle;
+        total_angle += line->data[i].as.sbend.angle;
         break;
       case ELETYPE_QUAD:
       case ELETYPE_DRIFT:
@@ -801,10 +802,10 @@ double calculate_line_angle(Element *line) {
   return total_angle;
 }
 
-double calculate_line_length(Element *line) {
+double calculate_line_length(Line *line) {
   double total_length = 0;
-  for (size_t i=0; i<arrlenu(line); i++) {
-    double ele_len = element_length(line[i]);
+  for (size_t i=0; i<line->length; i++) {
+    double ele_len = element_length(line->data[i]);
     total_length += ele_len;
   }
   return total_length;
@@ -884,7 +885,7 @@ double get_curlyH(Element element, double eta0, double etap0, double beta0, doub
   return I5 / (L*fabs(cube(h)));
 }
 
-void propagate_linear_optics(Element *line, double *line_matrix, LinOptsParams *lin_opt_params, double *I_synch) {
+void propagate_linear_optics(Line *line, double *line_matrix, LinOptsParams *lin_opt_params, double *I_synch) {
   double S = 0.0;
   arrput(lin_opt_params->Ss, 0.0);
 
@@ -921,19 +922,19 @@ void propagate_linear_optics(Element *line, double *line_matrix, LinOptsParams *
   arrput(lin_opt_params->element_etas, eta_vec[0]);
   arrput(lin_opt_params->element_etaps, eta_vec[1]);
 
-  for (size_t i=0; i<arrlenu(line); i++) {
-    arrput(lin_opt_params->element_curlyH, get_curlyH(line[i], eta_vec[0], eta_vec[1], twiss_mat[0*BEAM_DOFS + 0], -twiss_mat[0*BEAM_DOFS + 1]));
+  for (size_t i=0; i<line->length; i++) {
+    arrput(lin_opt_params->element_curlyH, get_curlyH(line->data[i], eta_vec[0], eta_vec[1], twiss_mat[0*BEAM_DOFS + 0], -twiss_mat[0*BEAM_DOFS + 1]));
 
-    S += element_length(line[i]);
+    S += element_length(line->data[i]);
     arrput(lin_opt_params->Ss, S);
 
-    advance_twiss_matrix(twiss_mat, line[i]);
+    advance_twiss_matrix(twiss_mat, line->data[i]);
 
     arrput(lin_opt_params->element_beta_xs, twiss_mat[0*BEAM_DOFS + 0]);
     arrput(lin_opt_params->element_beta_ys, twiss_mat[2*BEAM_DOFS + 2]);
 
     double temp_eta_vec[3] = {0};
-    matrix_multiply(line[i].eta_prop_matrix, eta_vec, temp_eta_vec, 3, 3, 3, 1);
+    matrix_multiply(line->data[i].eta_prop_matrix, eta_vec, temp_eta_vec, 3, 3, 3, 1);
     memcpy(eta_vec, temp_eta_vec, 3*sizeof(double));
     arrput(lin_opt_params->element_etas, eta_vec[0]);
     arrput(lin_opt_params->element_etaps, eta_vec[1]);
@@ -945,10 +946,10 @@ void propagate_linear_optics(Element *line, double *line_matrix, LinOptsParams *
   I_synch[3] = 0.0;
   I_synch[4] = 0.0;
   for (size_t i=0; i<arrlenu(line); i++) {
-    if (line[i].type == ELETYPE_SBEND) {
-      double angle = line[i].as.sbend.angle;
-      double L = line[i].as.sbend.length;
-      double K1 = line[i].as.sbend.K1;
+    if (line->data[i].type == ELETYPE_SBEND) {
+      double angle = line->data[i].as.sbend.angle;
+      double L = line->data[i].as.sbend.length;
+      double K1 = line->data[i].as.sbend.K1;
       double h = angle / L;
       if (h == 0.0) continue;
 
@@ -1018,12 +1019,12 @@ void apply_matrix_n_times(double* result, double *matrix, size_t N) {
   }
 }
 
-void get_line_matrix(double *matrix, Element *line) {
+void get_line_matrix(double *matrix, Line *line) {
   memcpy(matrix, SIXBYSIX_IDENTITY, BEAM_DOFS*BEAM_DOFS*sizeof(double));
 
-  for (size_t i=0; i<arrlenu(line); i++) {
+  for (size_t i=0; i<line->length; i++) {
     double temp_result[BEAM_DOFS*BEAM_DOFS] = {0};
-    matrix_multiply(line[i].R_matrix, matrix, temp_result, BEAM_DOFS, BEAM_DOFS, BEAM_DOFS, BEAM_DOFS);
+    matrix_multiply(line->data[i].R_matrix, matrix, temp_result, BEAM_DOFS, BEAM_DOFS, BEAM_DOFS, BEAM_DOFS);
     memcpy(matrix, temp_result, BEAM_DOFS*BEAM_DOFS*sizeof(double));
   }
 }

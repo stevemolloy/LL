@@ -64,6 +64,7 @@ typedef struct {
 // CAV : RFCavity, L=0.37800000,VOLT=0.09000000, harm=176, lag=0.0; 
 typedef struct {
   double length;
+  double frequency;
   double voltage;
   double harmonic;
   double lag;
@@ -190,28 +191,28 @@ Line int_times_element(int repeats, Element ele);
 void track_thru(double *beam, size_t n_particles, Element element);
 void track(double *beam, size_t n_particles, Element *line, size_t n_elements);
 
-double synch_rad_integral_2(Element *line);
-double synch_rad_integral_3(Element *line);
+double synch_rad_integral_2(Line *line);
+double synch_rad_integral_3(Line *line);
 double synch_rad_integral_4(Element *line, int periodicity, double *element_etas);
 double synch_rad_integral_5(Element *line, int periodicity, double *element_curlyH);
 double e_loss_per_turn(double I2, double gamma0);
 double natural_emittance_x(double I2, double I4, double I5, double gamma0);
 double energy_spread(double I2, double I3, double I4, double gamma0);
 double get_curlyH(Element element, double eta, double etap, double beta, double alpha);
-void propagate_linear_optics(Element *line, double *total_matrix, LinOptsParams *lin_opt_params, double *I_synch);
+void propagate_linear_optics(Line *line, double *total_matrix, LinOptsParams *lin_opt_params, double *I_synch);
 
 void generate_lattice_from_mad8_file(const char *filename, Element **line);
 void generate_lattice_from_tracy_file(const char *filename, Element **line);
 bool tokenise_tracy_file(sdm_string_view *file_contents, Token **tokens);
 void create_line(char *cursor, Element **line, ElementLibrary *element_library);
 char *populate_element_library(ElementLibrary **element_library, Element **element_list, char *cursor);
-void get_line_matrix(double *matrix, Element *line);
+void get_line_matrix(double *matrix, Line *line);
 Element create_element(sdm_arena_t *mem_arena, char *name, char **cursor);
 void element_print(FILE *sink, Element element);
 double element_length(Element element);
 double bending_radius_of_element(Element element);
-double calculate_line_length(Element *line);
-double calculate_line_angle(Element *line);
+double calculate_line_length(Line *line);
+double calculate_line_angle(Line *line);
 void make_r_matrix(Element *element);
 
 void rmatrix_print(FILE *file, double mat[BEAM_DOFS*BEAM_DOFS]);

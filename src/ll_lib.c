@@ -913,7 +913,8 @@ void write_astnode_toC(FILE *sink, ASTNode *ast) {
         ASTNode *phi_var = get_named_variable_value(funcall.named_args, "Phi");
         ASTNode *k1_var = get_named_variable_value(funcall.named_args, "K1");
         write_variable_defn(sink, len_var); fprintf(sink, ", ");
-        write_variable_defn(sink, phi_var); fprintf(sink, ", ");
+        fprintf(sink, "degrees_to_radians(");
+        write_variable_defn(sink, phi_var); fprintf(sink, "), ");
         write_variable_defn(sink, k1_var); fprintf(sink, ")");
       } else if (sdm_svncmp(funcall.name, "Sextupole") == 0) {
         fprintf(sink, "make_sext(");
@@ -953,6 +954,7 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
   fprintf(sink, "\n");
   fprintf(sink, "#include \"acc_elements.h\"\n");
   fprintf(sink, "#include \"sdm_lib.h\"\n");
+  fprintf(sink, "#include \"lib.h\"\n");
   fprintf(sink, "\n");
 
   fprintf(sink, "static sdm_arena_t main_arena = {0};\n");
@@ -967,6 +969,23 @@ void transpile_program_to_C(FILE *sink, ASTNodeArray program) {
     fprintf(sink, "\t");
     write_astnode_toC(sink, &program.data[i]);
   }
+  fprintf(sink, "\n");
+  // fprintf(sink, "\tconst double gamma_0 = 3.0 * 1e9 / ELECTRON_MASS;\n");
+  fprintf(sink, "\tdouble line_length = calculate_line_length(&sp);\n");
+  fprintf(sink, "\tprintf(\"line_length = %%f\\n\", line_length);\n");
+  fprintf(sink, "\tdouble line_angle = calculate_line_angle(&sp);\n");
+  fprintf(sink, "\tprintf(\"line_angle = %%f\\n\", line_angle);\n");
+  fprintf(sink, "\tfor (size_t i=0; i<sp.length; i++) { fprintf(stdout, \"%%zu: \", i+1); element_print(stdout, sp.data[i]); rmatrix_print(stdout, sp.data[i].R_matrix); fprintf(stdout, \"\\n\"); }\n");
+  fprintf(sink, "\tdouble line_matrix[BEAM_DOFS*BEAM_DOFS] = {0};\n");
+  // fprintf(sink, "\tdouble total_matrix[BEAM_DOFS*BEAM_DOFS] = {0};\n");
+  fprintf(sink, "\tdouble /*x_trace, y_trace,*/ I[5] = {0};\n");
+  // fprintf(sink, "\tdouble I_1, I_2, I_3, I_4, I_5;\n");
+  // fprintf(sink, "\tdouble j_x, T_0;\n");
+  // fprintf(sink, "\tLinOptsParams lin_opt_params = {0};\n");
+  // fprintf(sink, "\tpropagate_linear_optics(&sp, line_matrix, &lin_opt_params, I);\n");
+  // fprintf(sink, "\tapply_matrix_n_times(total_matrix, line_matrix, 20);\n");
+  fprintf(sink, "get_line_matrix(line_matrix, &sp);\n");
+  fprintf(sink, "\trmatrix_print(stdout, line_matrix);\n");
   fprintf(sink, "\n");
   fprintf(sink, "\treturn 0;\n");
   fprintf(sink, "}\n");
