@@ -29,10 +29,4 @@ $(OBJ):
 
 run: $(BIN)
 	$(BIN)
-	@cp -pr src/bundle/* transpiler_out
-
-transpiler_out/transpiled_file.c: run
-
-test: transpiler_out/transpiled_file.c
-	@$(MAKE) -C transpiler_out run
 
