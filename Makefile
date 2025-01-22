@@ -22,7 +22,6 @@ $(OBJ)/%.o: $(SRC)/%.c
 
 clean:
 	rm -rf $(BINDIR) $(OBJ)
-	rm -rf transpiler_out
 
 $(OBJ):
 	@mkdir -p $@
