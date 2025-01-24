@@ -229,11 +229,11 @@ void find_and_apply_keywords(TokenArray *t_array) {
   for (size_t i=0; i<t_array->length; i++) {
     if (t_array->data[i].token_type != TOKEN_TYPE_ID)
       continue;
-    Token t = t_array->data[i];
+    Token *t = &t_array->data[i];
     for (size_t j=0; j<KEYWORD_COUNT; j++) {
-      if (strcmp(t.as.id_token.value, keyword_strings[j]) == 0) {
-        t.token_type = TOKEN_TYPE_KEYWORD;
-        t.as.kw_token.value = j;
+      if (strcmp(t->as.id_token.value, keyword_strings[j]) == 0) {
+        t->token_type = TOKEN_TYPE_KEYWORD;
+        t->as.kw_token.value = j;
         break;
       }
     }
