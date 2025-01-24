@@ -27,6 +27,10 @@ int main(void) {
 
   tokenise_input_file(&parser, &token_array);
   find_and_apply_keywords(&token_array);
+  if (!validate_token_array(&token_array)) {
+    fprintf(stderr, "Invalid token array. This is a bug in the tokeniser.\n");
+    return 1;
+  };
 
   print_token_array(token_array);
   printf("Found %zu tokens, %zu lines, and %zu characters in %s\n", 

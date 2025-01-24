@@ -240,7 +240,93 @@ void find_and_apply_keywords(TokenArray *t_array) {
   }
 }
 
-bool validation_token_array(const TokenArray *t_array) {
-  return false;
+bool validate_token_array(const TokenArray *t_array) {
+  if (t_array->data[t_array->length-1].token_type != TOKEN_TYPE_EOF) {
+    fprintf(stderr, "Final token should be TOKEN_TYPE_EOF, but is not. This is a bug in the tokeniser.\n");
+    return false;
+  }
+  int parens_balance = 0;
+  for (size_t i=0; i<t_array->length; i++) {
+    Token token = t_array->data[i];
+    if (token.token_type == TOKEN_TYPE_SEMICOLON) {
+      if (parens_balance != 0) {
+        Parser src = token.source;
+        fprintf(stderr, "%s:%zu:%zu: Parenthesis imbalance found\n", src.filename, src.line, src.col);
+        return false;
+      }
+    }
+    else if (token.token_type == TOKEN_TYPE_OPAREN) parens_balance++;
+    else if (token.token_type == TOKEN_TYPE_CPAREN) parens_balance--;
+    if (parens_balance < 0) {
+      fprintf(stderr, "Parenthesis imbalance found\n");
+      return false;
+    }
+  }
+
+  size_t ind = 0;
+  while (ind < t_array->length) {
+    Token this_token = t_array->data[ind];
+    if (this_token.token_type == TOKEN_TYPE_EOF) return true;
+    assert(ind < t_array->length-1);
+    switch (this_token.token_type) {
+      case TOKEN_TYPE_KEYWORD: {
+        KeyWords kw = this_token.as.kw_token.value;
+        switch (kw) {
+          case KEYWORD_LET: {
+            if (t_array->length - ind < 5) {
+              fprintf(stderr, "%s:%zu:%zu: ERROR: 'let' expression badly formed\n",
+                      this_token.source.filename, this_token.source.line, this_token.source.col);
+              return false;
+            }
+            if (
+              t_array->data[ind+1].token_type!=TOKEN_TYPE_ID || 
+              t_array->data[ind+2].token_type!=TOKEN_TYPE_COLON || 
+              t_array->data[ind+3].token_type!=TOKEN_TYPE_ID || 
+              t_array->data[ind+4].token_type!=TOKEN_TYPE_ASSIGNMENT
+            ) {
+              fprintf(stderr, "%s:%zu:%zu: ERROR: 'let' expression badly formed. Should be 'let name: type = expr'\n",
+                      this_token.source.filename, this_token.source.line, this_token.source.col);
+              return false;
+            }
+            ind += 5;
+            while (t_array->data[ind].token_type != TOKEN_TYPE_SEMICOLON && t_array->data[ind].token_type != TOKEN_TYPE_EOF) {
+              ind += 1;
+            }
+          } break;
+          case KEYWORD_COUNT: {
+            fprintf(stderr, "%s:%zu:%zu: Unknown keyword. This is a bug in the tokeniser.\n", this_token.source.filename, this_token.source.line, this_token.source.col);
+            return false;
+          }
+        }
+      } break;
+      case TOKEN_TYPE_EOF: return true;
+      case TOKEN_TYPE_SEMICOLON: {
+        ind += 1;
+        continue;
+      }
+      case TOKEN_TYPE_ID:
+      case TOKEN_TYPE_UNKNOWN:
+      case TOKEN_TYPE_FLOAT:
+      case TOKEN_TYPE_INT:
+      case TOKEN_TYPE_STRING:
+      case TOKEN_TYPE_ASSIGNMENT:
+      case TOKEN_TYPE_ADD:
+      case TOKEN_TYPE_MULT:
+      case TOKEN_TYPE_SUB:
+      case TOKEN_TYPE_DIV:
+      case TOKEN_TYPE_OPAREN:
+      case TOKEN_TYPE_CPAREN:
+      case TOKEN_TYPE_COLON:
+      case TOKEN_TYPE_COMMA:
+      case TOKEN_TYPE_POINT:
+      case TOKEN_TYPE_QUOTEMARK:
+      case TOKEN_TYPE_COUNT: {
+        fprintf(stderr, "%s:%zu:%zu: Error\n", this_token.source.filename, this_token.source.line, this_token.source.col);
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 

@@ -70,7 +70,7 @@ typedef struct {
 } TokenArray;
 
 void find_and_apply_keywords(TokenArray *t_array);
-bool validation_token_array(const TokenArray *t_array);
+bool validate_token_array(const TokenArray *t_array);
 
 bool starts_with_comment(Parser parser);
 size_t starts_with_float(Parser parser);
