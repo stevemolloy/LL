@@ -1,5 +1,8 @@
 CC=clang
-CFLAGS = -Wall -Wpedantic -Wextra -std=c11 -ggdb
+CFLAGS = -Wall -Wpedantic -Wextra -std=c18 -ggdb
+ifeq ($(CC), clang)
+	CFLAGS +=  -fsanitize=undefined,address
+endif
 
 SRC = src
 OBJ = objs
@@ -22,9 +25,6 @@ $(OBJ)/%.o: $(SRC)/%.c
 
 clean:
 	rm -rf $(BINDIR) $(OBJ)
-
-$(OBJ):
-	@mkdir -p $@
 
 run: $(BIN)
 	$(BIN)

@@ -179,6 +179,7 @@ void sdm_arena_init(sdm_arena_t *arena, size_t capacity) {
   memset(arena->next, 0, sizeof(*arena->next));
   arena->capacity = capacity;
   arena->length = 0;
+  arena->alignment = sizeof(void*);
 }
 
 void *sdm_arena_alloc(sdm_arena_t *arena, size_t size) {
@@ -195,14 +196,20 @@ void *sdm_arena_alloc(sdm_arena_t *arena, size_t size) {
     return sdm_arena_alloc(arena->next, size);
   }
 
-  void *return_val = (char*)arena->start + arena->length;
+  uintptr_t rel_offset = arena->length;
+  size_t a = (uintptr_t)rel_offset % arena->alignment;
+  size_t align_shift = 0;
+  if (a != 0) {
+    align_shift = arena->alignment - a;
+    rel_offset += align_shift;
+  }
 
   if (size > 0)
-    arena->length += size;
+    arena->length += size + align_shift;
   else
     arena->length += 1;
 
-  return return_val;
+  return &arena->start[rel_offset];
 }
 
 void *sdm_arena_realloc(sdm_arena_t *arena, void *ptr, size_t size) {

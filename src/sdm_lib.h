@@ -87,11 +87,11 @@ void *active_realloc(void *ptr, size_t size);
     if (((da).capacity == 0) || ((da).data == NULL)) {            \
       (da).capacity = DEFAULT_CAPACITY;                           \
       (da).data = SDM_MALLOC((da).capacity * sizeof((da).data[0]));   \
-      memset((da).data, 0, (da).capacity * sizeof((da).data[0])); \
       if ((da).data == NULL) {                                    \
         fprintf(stderr, "ERR: Couldn't alloc memory.\n");         \
         exit(1);                                                  \
       }                                                           \
+      memset((da).data, 0, (da).capacity * sizeof((da).data[0])); \
     }                                                             \
     while ((da).length >= (da).capacity) {                        \
       (da).capacity *= 2;                                         \
@@ -244,7 +244,8 @@ typedef struct sdm_arena_t sdm_arena_t;
 struct sdm_arena_t {
   size_t length;
   size_t capacity;
-  void *start;
+  unsigned char *start;
+  size_t alignment;
   sdm_arena_t *next;
 };
 
