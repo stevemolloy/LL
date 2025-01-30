@@ -1,6 +1,7 @@
+let x: int = 5 + 2 * 7;
 // let d1: Drift = Drift( L = 0.01 );
 // let l1: Line = -d1;
-let h_rf: int    = 176;
+// let h_rf: int    = 176;
 // let c0: float    = 2.99792458e8;
 // let periods: int = 20;
 // let zero: int = periods + -periods;

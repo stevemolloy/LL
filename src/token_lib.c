@@ -55,29 +55,29 @@ void print_token_array(TokenArray token_array) {
   }
 }
 
-char *get_current_parser_string(Parser parser) {
-  return parser.contents.data + parser.index;
+char *get_current_tokeniser_string(Tokeniser tokeniser) {
+  return tokeniser.contents.data + tokeniser.index;
 }
 
-void advance_to_next_line(Parser *parser) {
-  while (parser->contents.data[parser->index] != '\n') {
-    parser->index++;
+void advance_to_next_line(Tokeniser *tokeniser) {
+  while (tokeniser->contents.data[tokeniser->index] != '\n') {
+    tokeniser->index++;
   }
-  parser->index++;
-  if (parser->index < parser->contents.length) {
-    parser->line++;
-    parser->col = 1;
+  tokeniser->index++;
+  if (tokeniser->index < tokeniser->contents.length) {
+    tokeniser->line++;
+    tokeniser->col = 1;
   }
 }
 
-bool starts_with_comment(Parser parser) {
+bool starts_with_comment(Tokeniser tokeniser) {
   const char *comment_marker = "//";
-  return strncmp(get_current_parser_string(parser), comment_marker, strlen(comment_marker)) == 0;
+  return strncmp(get_current_tokeniser_string(tokeniser), comment_marker, strlen(comment_marker)) == 0;
 }
 
-size_t starts_with_float(Parser parser) {
+size_t starts_with_float(Tokeniser tokeniser) {
   char *endptr;
-  char *input = get_current_parser_string(parser);
+  char *input = get_current_tokeniser_string(tokeniser);
   errno = 0;
   strtod(input, &endptr);
   if (errno != 0) return 0;
@@ -85,38 +85,38 @@ size_t starts_with_float(Parser parser) {
   return retval;
 }
 
-char parser_current_char(const Parser *parser) {
-  return parser->contents.data[parser->index];
+char tokeniser_current_char(const Tokeniser *tokeniser) {
+  return tokeniser->contents.data[tokeniser->index];
 }
 
-bool parser_isalpha(const Parser *parser) {
-  return isalpha(parser_current_char(parser));
+bool tokeniser_isalpha(const Tokeniser *tokeniser) {
+  return isalpha(tokeniser_current_char(tokeniser));
 }
 
-bool parser_is_id_char(const Parser *parser) {
+bool tokeniser_is_id_char(const Tokeniser *tokeniser) {
   return 
-    parser_isalpha(parser) || 
-    parser_current_char(parser) == '_' || 
-    isalnum(parser_current_char(parser));
+    tokeniser_isalpha(tokeniser) || 
+    tokeniser_current_char(tokeniser) == '_' || 
+    isalnum(tokeniser_current_char(tokeniser));
 }
 
-Token get_next_token(Parser *parser) {
-  parser_trim(parser);
+Token get_next_token(Tokeniser *tokeniser) {
+  tokeniser_trim(tokeniser);
 
-  while (starts_with_comment(*parser)) {
-    advance_to_next_line(parser);
-    parser_trim(parser);
+  while (starts_with_comment(*tokeniser)) {
+    advance_to_next_line(tokeniser);
+    tokeniser_trim(tokeniser);
   };
 
   Token token = {0};
-  memcpy(&token.source, parser, sizeof(*parser));
+  memcpy(&token.source, tokeniser, sizeof(*tokeniser));
   size_t len; // Only valid for the float/int part of the code
 
-  if (parser->index >= parser->contents.length) {
+  if (tokeniser->index >= tokeniser->contents.length) {
     token.token_type = TOKEN_TYPE_EOF;
-  } else if ((len = starts_with_float(*parser)) > 0) {
+  } else if ((len = starts_with_float(*tokeniser)) > 0) {
     // Could be an integer or a float
-    char *start_ptr = parser->contents.data + parser->index;
+    char *start_ptr = tokeniser->contents.data + tokeniser->index;
     char *end_ptr = start_ptr;
     strtol(start_ptr, &end_ptr, 10);
     if ((end_ptr - start_ptr) == (long)len) {
@@ -126,99 +126,99 @@ Token get_next_token(Parser *parser) {
       token.token_type = TOKEN_TYPE_FLOAT;
       token.as.float_token.value = atof(start_ptr);
     }
-    parser->index += len;
-  } else if (parser_isalpha(parser)) {
-    size_t start_index = parser->index;
-    while (parser_is_id_char(parser)) parser->index++;
-    size_t len = parser->index - start_index;
+    tokeniser->index += len;
+  } else if (tokeniser_isalpha(tokeniser)) {
+    size_t start_index = tokeniser->index;
+    while (tokeniser_is_id_char(tokeniser)) tokeniser->index++;
+    size_t id_len = tokeniser->index - start_index;
     token.token_type = TOKEN_TYPE_ID;
-    token.as.id_token.value = SDM_MALLOC((len+1) * sizeof(char));
-    memcpy(token.as.id_token.value, &parser->contents.data[start_index], len);
-  } else if (parser_current_char(parser) == ',') {
+    token.as.id_token.value = SDM_MALLOC((id_len+1) * sizeof(char));
+    memcpy(token.as.id_token.value, &tokeniser->contents.data[start_index], id_len);
+  } else if (tokeniser_current_char(tokeniser) == ',') {
     token.token_type = TOKEN_TYPE_COMMA;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '.') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '.') {
     token.token_type = TOKEN_TYPE_POINT;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '+') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '+') {
     token.token_type = TOKEN_TYPE_ADD;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '-') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '-') {
     token.token_type = TOKEN_TYPE_SUB;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '=') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '=') {
     token.token_type = TOKEN_TYPE_ASSIGNMENT;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '/') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '/') {
     token.token_type = TOKEN_TYPE_DIV;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '*') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '*') {
     token.token_type = TOKEN_TYPE_MULT;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == ':') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == ':') {
     token.token_type = TOKEN_TYPE_COLON;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == ';') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == ';') {
     token.token_type = TOKEN_TYPE_SEMICOLON;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '(') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '(') {
     token.token_type = TOKEN_TYPE_OPAREN;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == ')') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == ')') {
     token.token_type = TOKEN_TYPE_CPAREN;
-    parser->index += 1;
-  } else if (parser_current_char(parser) == '"') {
+    tokeniser->index += 1;
+  } else if (tokeniser_current_char(tokeniser) == '"') {
     // We have a string.  We have to find the end
-    parser->index++;
-    size_t str_start = parser->index;
-    while ((parser->index < parser->contents.length) && (parser_current_char(parser) != '"')) {
-      parser->index++;
+    tokeniser->index++;
+    size_t str_start = tokeniser->index;
+    while ((tokeniser->index < tokeniser->contents.length) && (tokeniser_current_char(tokeniser) != '"')) {
+      tokeniser->index++;
     }
-    size_t str_len = parser->index - str_start;
+    size_t str_len = tokeniser->index - str_start;
     token.token_type = TOKEN_TYPE_STRING;
     token.as.str_token.value = SDM_MALLOC(str_len + 1);
     memset(token.as.str_token.value, 0, str_len + 1);
-    memcpy(token.as.str_token.value, parser->contents.data+str_start, str_len);
-    parser->index += str_len + 1;
+    memcpy(token.as.str_token.value, tokeniser->contents.data+str_start, str_len);
+    tokeniser->index += str_len + 1;
   } else {
-    fprintf(stderr, "WARNING: Unsure how to parse '%c'\n", parser->contents.data[parser->index]);
+    fprintf(stderr, "WARNING: Unsure how to parse '%c'\n", tokeniser->contents.data[tokeniser->index]);
     token.token_type = TOKEN_TYPE_UNKNOWN;
-    parser->index += 1;
+    tokeniser->index += 1;
   }
 
   return token;
 }
 
-void tokenise_input_file(Parser *parser, TokenArray *token_array) {
-  sdm_string_view contents = parser->contents;
+void tokenise_input_file(Tokeniser *tokeniser, TokenArray *token_array) {
+  sdm_string_view contents = tokeniser->contents;
 
-  while (parser->index < contents.length) {
-    SDM_ARRAY_PUSH(*token_array, get_next_token(parser));
+  while (tokeniser->index < contents.length) {
+    SDM_ARRAY_PUSH(*token_array, get_next_token(tokeniser));
   }
 }
 
-void parser_trim(Parser *parser) {
-  char *text = get_current_parser_string(*parser);
+void tokeniser_trim(Tokeniser *tokeniser) {
+  char *text = get_current_tokeniser_string(*tokeniser);
   while (strlen(text) > 0 && isspace(*text)) {
     if (*text == '\n') {
-      parser->line++;
-      parser->col = 1;
+      tokeniser->line++;
+      tokeniser->col = 1;
     } else {
-      parser->col++;
+      tokeniser->col++;
     }
-    parser->index++;
-    text = get_current_parser_string(*parser);
+    tokeniser->index++;
+    text = get_current_tokeniser_string(*tokeniser);
   }
 }
 
-void parser_chop(Parser *parser, size_t len) {
-  sdm_string_view *SV = &parser->contents;
+void tokeniser_chop(Tokeniser *tokeniser, size_t len) {
+  sdm_string_view *SV = &tokeniser->contents;
   for (size_t i=0; SV->length>0 && i<len; i++) {
     if (SV->data[0] == '\n') {
-      parser->line++;
-      parser->col = 0;
+      tokeniser->line++;
+      tokeniser->col = 0;
     } else {
-      parser->col++;
+      tokeniser->col++;
     }
     SV->data++;
     SV->length--;
@@ -250,7 +250,7 @@ bool validate_token_array(const TokenArray *t_array) {
     Token token = t_array->data[i];
     if (token.token_type == TOKEN_TYPE_SEMICOLON) {
       if (parens_balance != 0) {
-        Parser src = token.source;
+        Tokeniser src = token.source;
         fprintf(stderr, "%s:%zu:%zu: Parenthesis imbalance found\n", src.filename, src.line, src.col);
         return false;
       }

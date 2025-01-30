@@ -13,7 +13,7 @@ typedef struct {
   size_t line;
   size_t col;
   size_t index;
-} Parser;
+} Tokeniser;
 
 typedef enum {
   TOKEN_TYPE_UNKNOWN = 0,
@@ -60,7 +60,7 @@ typedef struct {
     StringToken str_token;
     KeyWordToken kw_token;
   } as;
-  Parser source;
+  Tokeniser source;
 } Token;
 
 typedef struct {
@@ -72,12 +72,12 @@ typedef struct {
 void find_and_apply_keywords(TokenArray *t_array);
 bool validate_token_array(const TokenArray *t_array);
 
-bool starts_with_comment(Parser parser);
-size_t starts_with_float(Parser parser);
-Token get_next_token(Parser *parser);
-void tokenise_input_file(Parser *parser, TokenArray *token_array);
-void parser_trim(Parser *parser);
-void parser_chop(Parser *parser, size_t len);
+bool starts_with_comment(Tokeniser tokeniser);
+size_t starts_with_float(Tokeniser tokeniser);
+Token get_next_token(Tokeniser *tokeniser);
+void tokenise_input_file(Tokeniser *tokeniser, TokenArray *token_array);
+void tokeniser_trim(Tokeniser *tokeniser);
+void tokeniser_chop(Tokeniser *tokeniser, size_t len);
 void print_token_array(TokenArray token_array);
 
 #endif // !_LL_LIB_H

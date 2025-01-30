@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS = -Wall -Wpedantic -Wextra -std=c18 -ggdb
+CFLAGS = -Wall -Wpedantic -Wextra -Wshadow -Wvla -std=c18 -ggdb
 ifeq ($(CC), clang)
 	CFLAGS +=  -fsanitize=undefined,address
 endif

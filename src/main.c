@@ -17,7 +17,7 @@ int main(void) {
   // char *input_filename = "examples/type_example.ll";
 
   char *buffer = sdm_read_entire_file(input_filename);
-  Parser parser = {
+  Tokeniser tokeniser = {
     .filename = input_filename,
     .contents = sdm_cstr_as_sv(buffer),
     .col = 1,
@@ -25,7 +25,7 @@ int main(void) {
     .index = 0,
   };
 
-  tokenise_input_file(&parser, &token_array);
+  tokenise_input_file(&tokeniser, &token_array);
   find_and_apply_keywords(&token_array);
   if (!validate_token_array(&token_array)) {
     fprintf(stderr, "Invalid token array. This is a bug in the tokeniser.\n");
@@ -34,7 +34,7 @@ int main(void) {
 
   print_token_array(token_array);
   printf("Found %zu tokens, %zu lines, and %zu characters in %s\n", 
-         token_array.length, parser.line, parser.index, parser.filename);
+         token_array.length, tokeniser.line, tokeniser.index, tokeniser.filename);
 
   sdm_arena_free(&main_arena);
 
